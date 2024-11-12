@@ -1,4 +1,4 @@
-package com.rpfcoding.snoozeloo.core.designsystem
+package com.rpfcoding.snoozeloo.core.presentation.designsystem
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.lightColorScheme

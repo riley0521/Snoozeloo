@@ -44,6 +44,10 @@ class AlarmRepositoryImpl(
     }
 
     override suspend fun deleteById(id: String) {
+        getById(id)?.let {
+            alarmScheduler.cancel(it)
+        }
+
         localAlarmDataSource.deleteById(id)
     }
 

@@ -46,6 +46,9 @@ import com.rpfcoding.snoozeloo.core.presentation.designsystem.SnoozelooTheme
 import com.rpfcoding.snoozeloo.core.util.formatHourMinute
 import com.rpfcoding.snoozeloo.core.util.formatSeconds
 import com.rpfcoding.snoozeloo.feature_alarm.domain.Alarm
+import com.rpfcoding.snoozeloo.feature_alarm.domain.GetCurrentAndFutureDateUseCase
+import com.rpfcoding.snoozeloo.feature_alarm.domain.convertLocalDateTimeToEpochSeconds
+import com.rpfcoding.snoozeloo.feature_alarm.presentation.util.getDummyAlarm
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import org.koin.androidx.compose.koinViewModel
@@ -77,7 +80,8 @@ fun AlarmListScreenRoot(
 private fun AlarmListScreen(
     state: AlarmListState,
     onAction: (AlarmListAction) -> Unit,
-    onGetTimeLeftInSeconds: (hour: Int, minute: Int) -> Flow<Long>
+    onGetTimeLeftInSeconds: (hour: Int, minute: Int) -> Flow<Long>,
+    isPreview: Boolean = false
 ) {
     Scaffold(
         floatingActionButton = {
@@ -130,7 +134,9 @@ private fun AlarmListScreen(
 
                     AlarmListItem(
                         alarm = alarm,
-                        timeLeftInSeconds = timeLeftInSeconds,
+                        timeLeftInSeconds = if (isPreview) {
+                            getTimeLeftInSeconds(alarm)
+                        } else timeLeftInSeconds,
                         onAlarmClick = {
                             onAction(AlarmListAction.OnAlarmClick(alarm.id))
                         },
@@ -276,7 +282,8 @@ private fun AlarmListScreenPreview() {
             onAction = {},
             onGetTimeLeftInSeconds = { _, _ ->
                 emptyFlow()
-            }
+            },
+            isPreview = true
         )
     }
 }
@@ -296,9 +303,11 @@ private fun EmptyAlarmListContentPreview() {
 @Composable
 private fun AlarmListItemPreview() {
     SnoozelooTheme {
+        val alarm = getDummyAlarms()[0]
+
         AlarmListItem(
-            alarm = getDummyAlarms()[0],
-            timeLeftInSeconds = 3600L,
+            alarm = alarm,
+            timeLeftInSeconds = getTimeLeftInSeconds(alarm),
             onAlarmClick = {},
             onDeleteAlarmClick = {},
             onToggleAlarm = {},
@@ -307,8 +316,13 @@ private fun AlarmListItemPreview() {
     }
 }
 
+private fun getTimeLeftInSeconds(alarm: Alarm): Long {
+    val (curDateTime, futureDateTime) = GetCurrentAndFutureDateUseCase().invoke(alarm.hour, alarm.minute)
+    return convertLocalDateTimeToEpochSeconds(futureDateTime) - convertLocalDateTimeToEpochSeconds(curDateTime)
+}
+
 private fun getDummyAlarms() = listOf(
-    Alarm(name = "", hour = 10, minute = 0, enabled = true, ringtoneUri = ""),
-    Alarm(name = "Education", hour = 16, minute = 30, enabled = true, ringtoneUri = ""),
-    Alarm(name = "Dinner", hour = 18, minute = 15, enabled = false, ringtoneUri = ""),
+    getDummyAlarm(name = "Wake Up", hour = 10, minute = 0, enabled = true),
+    getDummyAlarm(name = "Education", hour = 16, minute = 30, enabled = true),
+    getDummyAlarm(name = "Dinner", hour = 18, minute = 45, enabled = false)
 )

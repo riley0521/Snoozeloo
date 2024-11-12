@@ -24,6 +24,7 @@ import com.rpfcoding.snoozeloo.R
 import com.rpfcoding.snoozeloo.core.presentation.designsystem.SnoozelooTheme
 import com.rpfcoding.snoozeloo.core.util.formatHourMinute
 import com.rpfcoding.snoozeloo.feature_alarm.domain.Alarm
+import com.rpfcoding.snoozeloo.feature_alarm.presentation.util.getDummyAlarm
 
 @Composable
 fun AlarmTriggerScreen(
@@ -82,7 +83,7 @@ fun AlarmTriggerScreen(
 private fun AlarmTriggerScreenPreview() {
     SnoozelooTheme {
         AlarmTriggerScreen(
-            alarm = Alarm(name = "Work", hour = 10, minute = 0, enabled = true, ringtoneUri = ""),
+            alarm = getDummyAlarm(name = "Work", hour = 10, minute = 0, enabled = true),
             onTurnOffClick = {}
         )
     }

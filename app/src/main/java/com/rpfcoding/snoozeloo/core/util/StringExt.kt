@@ -37,7 +37,7 @@ fun formatSeconds(value: Long): String {
                 dayStr
             }
         }
-        days == 0 && hours > 0 -> {
+        hours > 0 -> {
             if (minutes > 0) {
                 "$hourStr $minuteStr"
             } else {

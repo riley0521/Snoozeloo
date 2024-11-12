@@ -4,7 +4,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import java.time.LocalDateTime
-import java.time.ZoneId
 
 class GetTimeLeftInSecondsUseCase {
 
@@ -19,9 +18,5 @@ class GetTimeLeftInSecondsUseCase {
                 )
             }
         }
-    }
-
-    private fun convertLocalDateTimeToEpochSeconds(localDateTime: LocalDateTime): Long {
-        return localDateTime.atZone(ZoneId.systemDefault()).toEpochSecond()
     }
 }

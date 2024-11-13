@@ -8,7 +8,10 @@ data class Alarm(
     val hour: Int,
     val minute: Int,
     val enabled: Boolean,
-    val ringtoneUri: String
+    val repeatDays: Set<DayValue>,
+    val volume: Int,
+    val ringtoneUri: String,
+    val vibrate: Boolean
 ) {
     val isMorning: Boolean get() = hour in 0..11
 
@@ -17,4 +20,6 @@ data class Alarm(
     } else {
         hour
     }
+
+    val isOneTime: Boolean get() = repeatDays.isEmpty()
 }

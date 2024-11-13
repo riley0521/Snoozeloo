@@ -5,8 +5,8 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import com.rpfcoding.snoozeloo.core.util.Constants
 import com.rpfcoding.snoozeloo.feature_alarm.domain.Alarm
+import com.rpfcoding.snoozeloo.feature_alarm.domain.AlarmConstants
 import com.rpfcoding.snoozeloo.feature_alarm.domain.AlarmScheduler
 import com.rpfcoding.snoozeloo.feature_alarm.domain.GetCurrentAndFutureDateUseCase
 import java.time.ZoneId
@@ -23,7 +23,7 @@ class AndroidAlarmScheduler(
         val (_, futureDateTime) = getCurrentAndFutureDateUseCase(alarm.hour, alarm.minute)
 
         val intent = Intent(context, AlarmReceiver::class.java).apply {
-            putExtra(Constants.EXTRA_ALARM_ID, alarm.id)
+            putExtra(AlarmConstants.EXTRA_ALARM_ID, alarm.id)
         }
 
         alarmManager.setExactAndAllowWhileIdle(

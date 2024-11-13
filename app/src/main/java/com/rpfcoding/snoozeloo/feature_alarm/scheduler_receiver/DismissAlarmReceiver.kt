@@ -4,8 +4,8 @@ import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import com.rpfcoding.snoozeloo.core.util.Constants
 import com.rpfcoding.snoozeloo.core.util.isOreoPlus
+import com.rpfcoding.snoozeloo.feature_alarm.domain.AlarmConstants
 import com.rpfcoding.snoozeloo.feature_alarm.domain.AlarmRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -27,13 +27,13 @@ class DismissAlarmReceiver: BroadcastReceiver() {
         private val scope: CoroutineScope by inject()
 
         fun onReceive(context: Context?, intent: Intent?) {
-            val alarmId = intent?.getStringExtra(Constants.EXTRA_ALARM_ID) ?: return
+            val alarmId = intent?.getStringExtra(AlarmConstants.EXTRA_ALARM_ID) ?: return
             if (context == null) {
                 return
             }
 
             AlarmReceiver.stopAndResetRingtone()
-            intent.getStringExtra(Constants.EXTRA_ALARM_CUSTOM_CHANNEL_ID)?.let { channelId ->
+            intent.getStringExtra(AlarmConstants.EXTRA_ALARM_CUSTOM_CHANNEL_ID)?.let { channelId ->
                 deleteNotificationChannel(context, channelId)
             }
 

@@ -16,11 +16,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.rpfcoding.snoozeloo.core.presentation.designsystem.SnoozelooTheme
-import com.rpfcoding.snoozeloo.core.util.Constants
 import com.rpfcoding.snoozeloo.core.util.hideNotification
 import com.rpfcoding.snoozeloo.core.util.isOreoMr1Plus
 import com.rpfcoding.snoozeloo.core.util.isOreoPlus
 import com.rpfcoding.snoozeloo.feature_alarm.domain.Alarm
+import com.rpfcoding.snoozeloo.feature_alarm.domain.AlarmConstants
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -35,7 +35,7 @@ class ReminderActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         actionBar?.hide()
         showOverLockscreen()
-        val alarmId = intent?.getStringExtra(Constants.EXTRA_ALARM_ID) ?: throw Exception("Alarm ID is not found.")
+        val alarmId = intent?.getStringExtra(AlarmConstants.EXTRA_ALARM_ID) ?: throw Exception("Alarm ID is not found.")
 
         setContent {
             SnoozelooTheme {
@@ -49,7 +49,7 @@ class ReminderActivity : ComponentActivity() {
                 }
 
                 LaunchedEffect(Unit) {
-                    delay(Constants.ALARM_MAX_REMINDER_MILLIS)
+                    delay(AlarmConstants.ALARM_MAX_REMINDER_MILLIS)
                     hideNotification(alarmId.hashCode())
                     finish()
                 }
@@ -95,7 +95,7 @@ class ReminderActivity : ComponentActivity() {
         val alarmVolume = audioManager.getStreamVolume(AudioManager.STREAM_ALARM)
         audioManager.setStreamVolume(AudioManager.STREAM_ALARM, alarmVolume, 0)
 
-        val pattern = Constants.VIBRATE_PATTERN_LONG_ARR
+        val pattern = AlarmConstants.VIBRATE_PATTERN_LONG_ARR
         if (isOreoPlus()) {
             scope.launch {
                 delay(500L)

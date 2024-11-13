@@ -14,12 +14,12 @@ import android.media.RingtoneManager
 import android.net.Uri
 import androidx.core.app.NotificationCompat
 import com.rpfcoding.snoozeloo.R
-import com.rpfcoding.snoozeloo.core.util.Constants
 import com.rpfcoding.snoozeloo.core.util.hideNotification
 import com.rpfcoding.snoozeloo.core.util.isOreoPlus
 import com.rpfcoding.snoozeloo.core.util.isPiePlus
 import com.rpfcoding.snoozeloo.core.util.isScreenOn
 import com.rpfcoding.snoozeloo.feature_alarm.domain.Alarm
+import com.rpfcoding.snoozeloo.feature_alarm.domain.AlarmConstants
 import com.rpfcoding.snoozeloo.feature_alarm.domain.AlarmRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -56,13 +56,13 @@ class AlarmReceiver: BroadcastReceiver() {
         private val scope: CoroutineScope by inject()
 
         fun onReceive(context: Context?, intent: Intent?) {
-            val alarmId = intent?.getStringExtra(Constants.EXTRA_ALARM_ID) ?: return
+            val alarmId = intent?.getStringExtra(AlarmConstants.EXTRA_ALARM_ID) ?: return
             if (context == null) {
                 return
             }
 
             val reminderActIntent = Intent(context, ReminderActivity::class.java).apply {
-                putExtra(Constants.EXTRA_ALARM_ID, alarmId)
+                putExtra(AlarmConstants.EXTRA_ALARM_ID, alarmId)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
 
@@ -84,7 +84,7 @@ class AlarmReceiver: BroadcastReceiver() {
                         }
 
                         launch {
-                            delay(Constants.ALARM_MAX_REMINDER_MILLIS)
+                            delay(AlarmConstants.ALARM_MAX_REMINDER_MILLIS)
                             context.hideNotification(alarm.id.hashCode())
                         }
                     }
@@ -94,7 +94,7 @@ class AlarmReceiver: BroadcastReceiver() {
 
                 if (isOreoPlus()) {
                     val notificationManager = context.getSystemService(NotificationManager::class.java)
-                    val builder = NotificationCompat.Builder(context, Constants.CHANNEL_ID)
+                    val builder = NotificationCompat.Builder(context, AlarmConstants.CHANNEL_ID)
                         .setSmallIcon(R.drawable.alarm)
                         .setContentTitle("Alarm")
                         .setAutoCancel(true)
@@ -149,7 +149,7 @@ class AlarmReceiver: BroadcastReceiver() {
             }
 
             val dismissAlarmPendingIntent = getDismissAlarmPendingIntent(context, alarm, channelId)
-            val vibrateArray = Constants.VIBRATE_PATTERN_LONG_ARR
+            val vibrateArray = AlarmConstants.VIBRATE_PATTERN_LONG_ARR
 
             val builder = NotificationCompat.Builder(context, channelId)
                 .setSmallIcon(R.drawable.alarm)
@@ -171,8 +171,8 @@ class AlarmReceiver: BroadcastReceiver() {
 
         private fun getDismissAlarmPendingIntent(context: Context, alarm: Alarm, channelId: String): PendingIntent {
             val intent = Intent(context, DismissAlarmReceiver::class.java).apply {
-                putExtra(Constants.EXTRA_ALARM_ID, alarm.id)
-                putExtra(Constants.EXTRA_ALARM_CUSTOM_CHANNEL_ID, channelId)
+                putExtra(AlarmConstants.EXTRA_ALARM_ID, alarm.id)
+                putExtra(AlarmConstants.EXTRA_ALARM_CUSTOM_CHANNEL_ID, channelId)
             }
             return PendingIntent.getBroadcast(
                 context,

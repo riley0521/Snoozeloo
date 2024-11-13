@@ -1,6 +1,6 @@
-package com.rpfcoding.snoozeloo.core.util
+package com.rpfcoding.snoozeloo.feature_alarm.domain
 
-object Constants {
+object AlarmConstants {
 
     const val CHANNEL_ID = "snoozeloo_alarm"
     const val EXTRA_ALARM_ID = "SNOOZELOO_ALARM_ID"

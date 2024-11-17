@@ -1,9 +1,13 @@
+@file:OptIn(ExperimentalLayoutApi::class)
+
 package com.rpfcoding.snoozeloo.feature_alarm.presentation.list
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -32,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,13 +50,16 @@ import com.rpfcoding.snoozeloo.R
 import com.rpfcoding.snoozeloo.core.presentation.designsystem.SnoozelooTheme
 import com.rpfcoding.snoozeloo.core.util.formatHourMinute
 import com.rpfcoding.snoozeloo.core.util.formatSeconds
+import com.rpfcoding.snoozeloo.core.util.formatSecondsToHourAndMinute
 import com.rpfcoding.snoozeloo.feature_alarm.domain.Alarm
-import com.rpfcoding.snoozeloo.feature_alarm.domain.GetCurrentAndFutureDateUseCase
+import com.rpfcoding.snoozeloo.feature_alarm.domain.DayValue
 import com.rpfcoding.snoozeloo.feature_alarm.domain.convertLocalDateTimeToEpochSeconds
+import com.rpfcoding.snoozeloo.feature_alarm.presentation.components.DayChip
 import com.rpfcoding.snoozeloo.feature_alarm.presentation.util.getDummyAlarm
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import org.koin.androidx.compose.koinViewModel
+import java.time.LocalDateTime
 
 @Composable
 fun AlarmListScreenRoot(
@@ -70,8 +78,19 @@ fun AlarmListScreenRoot(
                 }
             }
         },
-        onGetTimeLeftInSeconds = { hour, minute ->
-            viewModel.getTimeLeftInSecondsFlow(hour, minute)
+        onGetTimeLeftInSeconds = { alarm ->
+            viewModel.getTimeLeftInSecondsFlow(
+                hour = alarm.hour,
+                minute = alarm.minute,
+                repeatDays = alarm.repeatDays
+            )
+        },
+        onGetTimeToSleepInSeconds = { alarm ->
+            viewModel.getTimeToSleepInSecondsFlow(
+                hour = alarm.hour,
+                minute = alarm.minute,
+                repeatDays = alarm.repeatDays
+            )
         }
     )
 }
@@ -80,7 +99,8 @@ fun AlarmListScreenRoot(
 private fun AlarmListScreen(
     state: AlarmListState,
     onAction: (AlarmListAction) -> Unit,
-    onGetTimeLeftInSeconds: (hour: Int, minute: Int) -> Flow<Long>,
+    onGetTimeLeftInSeconds: (alarm: Alarm) -> Flow<Long>,
+    onGetTimeToSleepInSeconds: (alarm: Alarm) -> Flow<Long?>,
     isPreview: Boolean = false
 ) {
     Scaffold(
@@ -130,13 +150,40 @@ private fun AlarmListScreen(
                     Spacer(modifier = Modifier.height(24.dp))
                 }
                 items(state.alarms, key = { it.id }) { alarm ->
-                    val timeLeftInSeconds by onGetTimeLeftInSeconds(alarm.hour, alarm.minute).collectAsState(0L)
+                    val timeLeftInSeconds by remember(alarm.enabled, alarm.repeatDays) { // Re-trigger this everytime these 2 changes.
+                        if (alarm.enabled) {
+                            onGetTimeLeftInSeconds(alarm)
+                        } else {
+                            emptyFlow()
+                        }
+                    }.collectAsState(0L)
+                    val timeToSleepInSeconds by remember(alarm.enabled, alarm.repeatDays) {
+                        if (alarm.enabled) {
+                             onGetTimeToSleepInSeconds(alarm)
+                        } else {
+                            emptyFlow()
+                        }
+                    }.collectAsState(0)
+
+                    // REGION - For compose preview only
+                    val curDateTime = LocalDateTime.now()
+                    val futureDateTime = curDateTime.plusDays(1).withHour(5).withMinute(15)
+                    fun getTimeLeftInSeconds(): Long {
+                        return convertLocalDateTimeToEpochSeconds(futureDateTime) - convertLocalDateTimeToEpochSeconds(curDateTime)
+                    }
+                    fun getTimeToSleepInSeconds(): Long {
+                        return convertLocalDateTimeToEpochSeconds(futureDateTime.plusHours(-8))
+                    }
+                    // END REGION
 
                     AlarmListItem(
                         alarm = alarm,
                         timeLeftInSeconds = if (isPreview) {
-                            getTimeLeftInSeconds(alarm)
+                            getTimeLeftInSeconds()
                         } else timeLeftInSeconds,
+                        hourToSleep = if (isPreview) {
+                            getTimeToSleepInSeconds()
+                        } else timeToSleepInSeconds,
                         onAlarmClick = {
                             onAction(AlarmListAction.OnAlarmClick(alarm.id))
                         },
@@ -145,6 +192,9 @@ private fun AlarmListScreen(
                         },
                         onToggleAlarm = {
                             onAction(AlarmListAction.OnToggleAlarm(alarm))
+                        },
+                        onToggleDayOfAlarm = {
+                            onAction(AlarmListAction.OnToggleDayOfAlarm(it, alarm))
                         },
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -194,9 +244,11 @@ private fun EmptyAlarmListContent(
 private fun AlarmListItem(
     alarm: Alarm,
     timeLeftInSeconds: Long,
+    hourToSleep: Long?,
     onAlarmClick: () -> Unit,
     onDeleteAlarmClick: () -> Unit,
     onToggleAlarm: () -> Unit,
+    onToggleDayOfAlarm: (DayValue) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -245,7 +297,7 @@ private fun AlarmListItem(
                 modifier = Modifier.alignByBaseline()
             )
         }
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(if (alarm.enabled) 8.dp else 16.dp))
         if (alarm.enabled) {
             val remainingTimeStr = formatSeconds(timeLeftInSeconds)
 
@@ -256,7 +308,29 @@ private fun AlarmListItem(
                     color = MaterialTheme.colorScheme.secondary
                 )
             }
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            DayValue.entries.forEach { day ->
+                DayChip(
+                    dayValue = day,
+                    isSelected = alarm.repeatDays.contains(day),
+                    onClick = {
+                        onToggleDayOfAlarm(day)
+                    }
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        if (hourToSleep != null) {
+            Text(
+                text = "Go to bed at ${formatSecondsToHourAndMinute(hourToSleep)} to get 8h of sleep",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.secondary
+            )
         }
         IconButton(
             onClick = onDeleteAlarmClick,
@@ -280,7 +354,10 @@ private fun AlarmListScreenPreview() {
                 alarms = getDummyAlarms()
             ),
             onAction = {},
-            onGetTimeLeftInSeconds = { _, _ ->
+            onGetTimeLeftInSeconds = { _ ->
+                emptyFlow()
+            },
+            onGetTimeToSleepInSeconds = { _ ->
                 emptyFlow()
             },
             isPreview = true
@@ -307,18 +384,15 @@ private fun AlarmListItemPreview() {
 
         AlarmListItem(
             alarm = alarm,
-            timeLeftInSeconds = getTimeLeftInSeconds(alarm),
+            timeLeftInSeconds = 0,
+            hourToSleep = 8,
             onAlarmClick = {},
             onDeleteAlarmClick = {},
             onToggleAlarm = {},
+            onToggleDayOfAlarm = {},
             modifier = Modifier.fillMaxWidth()
         )
     }
-}
-
-private fun getTimeLeftInSeconds(alarm: Alarm): Long {
-    val (curDateTime, futureDateTime) = GetCurrentAndFutureDateUseCase().invoke(alarm.hour, alarm.minute)
-    return convertLocalDateTimeToEpochSeconds(futureDateTime) - convertLocalDateTimeToEpochSeconds(curDateTime)
 }
 
 private fun getDummyAlarms() = listOf(

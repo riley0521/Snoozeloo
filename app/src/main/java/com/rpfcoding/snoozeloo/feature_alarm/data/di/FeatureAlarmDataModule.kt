@@ -5,6 +5,7 @@ import com.rpfcoding.snoozeloo.feature_alarm.data.RoomLocalAlarmDataSource
 import com.rpfcoding.snoozeloo.feature_alarm.domain.AlarmRepository
 import com.rpfcoding.snoozeloo.feature_alarm.domain.GetCurrentAndFutureDateUseCase
 import com.rpfcoding.snoozeloo.feature_alarm.domain.GetTimeLeftInSecondsUseCase
+import com.rpfcoding.snoozeloo.feature_alarm.domain.GetTimeToSleepInSecondsUseCase
 import com.rpfcoding.snoozeloo.feature_alarm.domain.LocalAlarmDataSource
 import com.rpfcoding.snoozeloo.feature_alarm.domain.ValidateAlarmUseCase
 import org.koin.core.module.dsl.singleOf
@@ -17,4 +18,5 @@ val featureAlarmDataModule = module {
     singleOf(::ValidateAlarmUseCase)
     singleOf(::GetCurrentAndFutureDateUseCase)
     singleOf(::GetTimeLeftInSecondsUseCase)
+    singleOf(::GetTimeToSleepInSecondsUseCase)
 }

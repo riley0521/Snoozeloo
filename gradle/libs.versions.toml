@@ -15,6 +15,7 @@ room = "2.6.1"
 ksp = "1.9.22-1.0.17"
 composeNavigation = "2.8.3"
 kotlinxSerializationJson = "1.6.3"
+coroutines = "1.8.1"
 
 kotlinCompilerExtensionVersion = "1.5.10"
 compileSdk = "35"
@@ -31,6 +32,7 @@ androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-co
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
 androidx-splash-screen = { module = "androidx.core:core-splashscreen", version.ref = "androidxSplashScreen" }
 desugar-jdk = { module = "com.android.tools:desugar_jdk_libs", version.ref = "desugar" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycleRuntimeKtx" }

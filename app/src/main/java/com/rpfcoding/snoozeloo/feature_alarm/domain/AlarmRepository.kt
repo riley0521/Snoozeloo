@@ -11,6 +11,7 @@ interface AlarmRepository {
      * We can enable or disable an alarm. It should be scheduled or cancelled from AlarmManager
      */
     suspend fun toggle(alarm: Alarm)
+    suspend fun toggleDay(day: DayValue, alarm: Alarm)
 
     /**
      * Disable the alarm after it has been turned off by the user. No need to cancel it from AlarmManager

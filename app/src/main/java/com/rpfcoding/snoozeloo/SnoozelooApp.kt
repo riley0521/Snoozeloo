@@ -4,6 +4,7 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import com.rpfcoding.snoozeloo.core.database.di.coreDatabaseModule
+import com.rpfcoding.snoozeloo.core.ringtone.di.coreRingtoneModule
 import com.rpfcoding.snoozeloo.core.util.isOreoPlus
 import com.rpfcoding.snoozeloo.feature_alarm.data.di.featureAlarmDataModule
 import com.rpfcoding.snoozeloo.feature_alarm.domain.AlarmConstants
@@ -29,6 +30,7 @@ class SnoozelooApp: Application() {
             modules(
                 appModule,
                 coreDatabaseModule,
+                coreRingtoneModule,
                 featureAlarmDataModule,
                 featureAlarmPresentationModule,
                 featureAlarmSchedulerReceiverModule

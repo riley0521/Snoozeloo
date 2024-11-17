@@ -6,8 +6,10 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rpfcoding.snoozeloo.feature_alarm.domain.AlarmRepository
+import com.rpfcoding.snoozeloo.feature_alarm.domain.DayValue
 import com.rpfcoding.snoozeloo.feature_alarm.domain.GetCurrentAndFutureDateUseCase
 import com.rpfcoding.snoozeloo.feature_alarm.domain.GetTimeLeftInSecondsUseCase
+import com.rpfcoding.snoozeloo.feature_alarm.domain.GetTimeToSleepInSecondsUseCase
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -16,7 +18,8 @@ import kotlinx.coroutines.launch
 class AlarmListViewModel(
     private val alarmRepository: AlarmRepository,
     private val getCurrentAndFutureDateUseCase: GetCurrentAndFutureDateUseCase,
-    private val getTimeLeftInSecondsUseCase: GetTimeLeftInSecondsUseCase
+    private val getTimeLeftInSecondsUseCase: GetTimeLeftInSecondsUseCase,
+    private val getTimeToSleepInSecondsUseCase: GetTimeToSleepInSecondsUseCase
 ): ViewModel() {
 
     var state by mutableStateOf(AlarmListState())
@@ -44,12 +47,22 @@ class AlarmListViewModel(
                     alarmRepository.deleteById(action.id)
                 }
             }
+            is AlarmListAction.OnToggleDayOfAlarm -> {
+                viewModelScope.launch {
+                    alarmRepository.toggleDay(action.day, action.alarm)
+                }
+            }
             else -> Unit
         }
     }
 
-    fun getTimeLeftInSecondsFlow(hour: Int, minute: Int): Flow<Long> {
-        val (_, futureDateTime) = getCurrentAndFutureDateUseCase(hour, minute)
+    fun getTimeLeftInSecondsFlow(hour: Int, minute: Int, repeatDays: Set<DayValue>): Flow<Long> {
+        val futureDateTime = getCurrentAndFutureDateUseCase(hour, minute, repeatDays)
         return getTimeLeftInSecondsUseCase(futureDateTime)
+    }
+
+    fun getTimeToSleepInSecondsFlow(hour: Int, minute: Int, repeatDays: Set<DayValue>): Flow<Long?> {
+        val futureDateTime = getCurrentAndFutureDateUseCase(hour, minute, repeatDays)
+        return getTimeToSleepInSecondsUseCase(hour, futureDateTime)
     }
 }

@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import java.util.UUID
+import kotlin.math.roundToInt
 
 class AddEditAlarmViewModel(
     private val alarmRepository: AlarmRepository,
@@ -62,6 +63,28 @@ class AddEditAlarmViewModel(
             is AddEditAlarmAction.OnMinuteTextChange -> {
                 state = state.copy(minute = action.value.take(2))
             }
+            is AddEditAlarmAction.OnDayChipToggle -> {
+                val mutableRepeatDays = state.repeatDays.toMutableSet()
+                if (mutableRepeatDays.contains(action.value)) {
+                    mutableRepeatDays.remove(action.value)
+                } else {
+                    mutableRepeatDays.add(action.value)
+                }
+
+                state = state.copy(repeatDays = mutableRepeatDays)
+            }
+            is AddEditAlarmAction.OnVolumeChange -> {
+                state = state.copy(volume = action.value)
+            }
+            AddEditAlarmAction.OnVibrateToggle -> {
+                state = state.copy(vibrate = !state.vibrate)
+            }
+            is AddEditAlarmAction.OnAlarmRingtoneChange -> {
+                state = state.copy(ringtone = action.value)
+            }
+            AddEditAlarmAction.OnDefaultAlarmRingtoneFetch -> {
+                state = state.copy(defaultRingtoneFetched = true)
+            }
             AddEditAlarmAction.OnSaveClick -> {
                 viewModelScope.launch {
                     val existingAlarm = alarmId?.let { alarmRepository.getById(it) }
@@ -71,7 +94,10 @@ class AddEditAlarmViewModel(
                         hour = state.hour.toIntOrNull() ?: 0,
                         minute = state.minute.toIntOrNull() ?: 0,
                         enabled = true,
-                        ringtoneUri = ""
+                        repeatDays = state.repeatDays,
+                        volume = (state.volume * 100).roundToInt().coerceAtMost(100),
+                        ringtoneUri = state.ringtone.second,
+                        vibrate = state.vibrate
                     )
                     alarmRepository.upsert(updatedAlarm)
                     eventChannel.send(AddEditAlarmEvent.OnSuccess)

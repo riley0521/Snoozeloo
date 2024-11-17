@@ -7,44 +7,27 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.media.AudioAttributes
-import android.media.AudioManager
-import android.media.Ringtone
 import android.media.RingtoneManager
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import androidx.core.app.NotificationCompat
 import com.rpfcoding.snoozeloo.R
+import com.rpfcoding.snoozeloo.core.domain.ringtone.ALARM_MAX_REMINDER_MILLIS
 import com.rpfcoding.snoozeloo.core.util.hideNotification
 import com.rpfcoding.snoozeloo.core.util.isOreoPlus
-import com.rpfcoding.snoozeloo.core.util.isPiePlus
 import com.rpfcoding.snoozeloo.core.util.isScreenOn
 import com.rpfcoding.snoozeloo.feature_alarm.domain.Alarm
 import com.rpfcoding.snoozeloo.feature_alarm.domain.AlarmConstants
 import com.rpfcoding.snoozeloo.feature_alarm.domain.AlarmRepository
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.runBlocking
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import com.rpfcoding.snoozeloo.core.domain.ringtone.RingtoneManager as MyRingtoneManager
 
 class AlarmReceiver: BroadcastReceiver() {
 
     private val helper by lazy { AlarmReceiverHelper() }
-
-    companion object {
-        private var ringtone: Ringtone? = null
-
-        fun stopAndResetRingtone() {
-            ringtone?.stop()
-            ringtone = null
-        }
-
-        fun isPlaying(): Boolean {
-            return ringtone != null
-        }
-    }
 
     override fun onReceive(context: Context?, intent: Intent?) {
         helper.onReceive(context, intent)
@@ -53,7 +36,8 @@ class AlarmReceiver: BroadcastReceiver() {
     private class AlarmReceiverHelper: KoinComponent {
 
         private val alarmRepository: AlarmRepository by inject()
-        private val scope: CoroutineScope by inject()
+        private val ringtoneManager: MyRingtoneManager by inject()
+        private val handler by lazy { Handler(Looper.getMainLooper()) }
 
         fun onReceive(context: Context?, intent: Intent?) {
             val alarmId = intent?.getStringExtra(AlarmConstants.EXTRA_ALARM_ID) ?: return
@@ -76,18 +60,16 @@ class AlarmReceiver: BroadcastReceiver() {
             if (context.isScreenOn()) {
                 println("SCREEN ON")
 
-                scope.launch {
-                    val alarm = alarmRepository.getById(alarmId)
-                    alarm?.let {
-                        withContext(Dispatchers.Main) {
-                            showAlarmNotification(context, pendingIntent, alarm)
-                        }
+                val alarm = runBlocking { alarmRepository.getById(alarmId) }
+                alarm?.let {
+                    showAlarmNotification(context, pendingIntent, alarm)
 
-                        launch {
-                            delay(AlarmConstants.ALARM_MAX_REMINDER_MILLIS)
+                    handler.postDelayed(
+                        {
                             context.hideNotification(alarm.id.hashCode())
-                        }
-                    }
+                        },
+                        ALARM_MAX_REMINDER_MILLIS
+                    )
                 }
             } else {
                 println("SCREEN OFF")
@@ -123,25 +105,17 @@ class AlarmReceiver: BroadcastReceiver() {
 
                 RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
             }
-            val channelId = "alarm-${alarm.id}"
+            val channelId = alarm.id
 
-            ringtone = RingtoneManager.getRingtone(context, ringtoneUri)
-            ringtone?.audioAttributes = AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_ALARM)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .setLegacyStreamType(AudioManager.STREAM_ALARM)
-                .setFlags(AudioAttributes.FLAG_AUDIBILITY_ENFORCED)
-                .build()
-
-            // TODO: In extended version, we should get the volume from the alarmItem
-            if (isPiePlus()) {
-                ringtone?.volume = 0.7f
-            }
-            ringtone?.play()
-
+            ringtoneManager.play(
+                uri = ringtoneUri.toString(),
+                isLooping = true,
+                volume = alarm.volume / 100f
+            )
             if (isOreoPlus()) {
+                val alarmName = alarm.name.ifBlank { "Alarm" }
                 val notificationManager = context.getSystemService(NotificationManager::class.java)
-                val channel = NotificationChannel(channelId, alarm.name, NotificationManager.IMPORTANCE_HIGH).apply {
+                val channel = NotificationChannel(channelId, alarmName, NotificationManager.IMPORTANCE_HIGH).apply {
                     setBypassDnd(true)
                     enableVibration(true)
                 }
@@ -162,7 +136,10 @@ class AlarmReceiver: BroadcastReceiver() {
                 .setDeleteIntent(dismissAlarmPendingIntent)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
-                .setVibrate(vibrateArray)
+
+            if (alarm.vibrate) {
+                builder.setVibrate(vibrateArray)
+            }
 
             return builder.build().apply {
                 flags = flags or Notification.FLAG_INSISTENT

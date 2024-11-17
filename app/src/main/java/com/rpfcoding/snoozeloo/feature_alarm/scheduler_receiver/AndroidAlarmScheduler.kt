@@ -20,7 +20,11 @@ class AndroidAlarmScheduler(
 
     @SuppressLint("MissingPermission")
     override fun schedule(alarm: Alarm) {
-        val (_, futureDateTime) = getCurrentAndFutureDateUseCase(alarm.hour, alarm.minute)
+        val futureDateTime = getCurrentAndFutureDateUseCase(
+            hour = alarm.hour,
+            minute = alarm.minute,
+            repeatDays = alarm.repeatDays
+        )
 
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             putExtra(AlarmConstants.EXTRA_ALARM_ID, alarm.id)

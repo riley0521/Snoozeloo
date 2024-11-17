@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 
 package com.rpfcoding.snoozeloo.feature_alarm.presentation.add_edit
 
@@ -7,6 +7,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,13 +18,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,17 +50,24 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.rpfcoding.snoozeloo.R
 import com.rpfcoding.snoozeloo.core.components.InputTimeTextField
+import com.rpfcoding.snoozeloo.core.domain.ringtone.RingtoneManager
 import com.rpfcoding.snoozeloo.core.presentation.designsystem.SnoozelooTheme
 import com.rpfcoding.snoozeloo.core.util.showToast
+import com.rpfcoding.snoozeloo.feature_alarm.domain.DayValue
+import com.rpfcoding.snoozeloo.feature_alarm.presentation.components.DayChip
 import kotlinx.coroutines.flow.collectLatest
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 @Composable
 fun AddEditAlarmScreenRoot(
     navigateBack: () -> Unit,
-    viewModel: AddEditAlarmViewModel = koinViewModel()
+    navigateToRingtoneList: () -> Unit,
+    viewModel: AddEditAlarmViewModel = koinViewModel(),
+    ringtoneManager: RingtoneManager = koinInject()
 ) {
     val context = LocalContext.current
+    val state = viewModel.state
 
     LaunchedEffect(Unit) {
         viewModel.events.collectLatest { event ->
@@ -68,11 +82,26 @@ fun AddEditAlarmScreenRoot(
         }
     }
 
+    LaunchedEffect(state.defaultRingtoneFetched) {
+        if (!state.defaultRingtoneFetched) {
+            val availableRingtones = ringtoneManager.getAvailableRingtones()
+            viewModel.onAction(
+                AddEditAlarmAction
+                    .OnAlarmRingtoneChange(
+                        availableRingtones.getOrNull(1)
+                            ?: Pair("", "")
+                    )
+            )
+            viewModel.onAction(AddEditAlarmAction.OnDefaultAlarmRingtoneFetch)
+        }
+    }
+
     AddAlarmScreen(
         state = viewModel.state,
         onAction = { action ->
             when (action) {
                 AddEditAlarmAction.OnCloseClick -> navigateBack()
+                AddEditAlarmAction.OnAlarmRingtoneClick -> navigateToRingtoneList()
                 else -> viewModel.onAction(action)
             }
         }
@@ -187,6 +216,7 @@ private fun AddAlarmScreenMainContent(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface)
             .padding(16.dp)
+            .verticalScroll(rememberScrollState())
     ) {
         CloseAndSaveButtons(
             canSave = state.canSave,
@@ -218,6 +248,117 @@ private fun AddAlarmScreenMainContent(
             },
             modifier = Modifier.fillMaxWidth()
         )
+        Spacer(modifier = Modifier.height(16.dp))
+        AlarmRepeatDaysSection(
+            repeatDays = state.repeatDays,
+            onToggleDayChip = {
+                onAction(AddEditAlarmAction.OnDayChipToggle(it))
+            },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .background(MaterialTheme.colorScheme.background)
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Alarm ringtone",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = state.ringtone.first,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable {
+                        onAction(AddEditAlarmAction.OnAlarmRingtoneClick)
+                    },
+                textAlign = TextAlign.End
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .background(MaterialTheme.colorScheme.background)
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "Alarm volume",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Slider(
+                value = state.volume,
+                onValueChange = {
+                    onAction(AddEditAlarmAction.OnVolumeChange(it))
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = SliderDefaults.colors()
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .background(MaterialTheme.colorScheme.background)
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Vibrate",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Switch(
+                checked = state.vibrate,
+                onCheckedChange = {
+                    onAction(AddEditAlarmAction.OnVibrateToggle)
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun AlarmRepeatDaysSection(
+    repeatDays: Set<DayValue>,
+    onToggleDayChip: (DayValue) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(MaterialTheme.colorScheme.background)
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "Repeat",
+            style = MaterialTheme.typography.bodyMedium
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            DayValue.entries.forEach { day ->
+                DayChip(
+                    dayValue = day,
+                    isSelected = repeatDays.contains(day),
+                    onClick = {
+                        onToggleDayChip(day)
+                    }
+                )
+            }
+        }
     }
 }
 

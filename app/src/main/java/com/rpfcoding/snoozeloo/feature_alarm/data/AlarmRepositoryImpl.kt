@@ -3,6 +3,7 @@ package com.rpfcoding.snoozeloo.feature_alarm.data
 import com.rpfcoding.snoozeloo.feature_alarm.domain.Alarm
 import com.rpfcoding.snoozeloo.feature_alarm.domain.AlarmRepository
 import com.rpfcoding.snoozeloo.feature_alarm.domain.AlarmScheduler
+import com.rpfcoding.snoozeloo.feature_alarm.domain.DayValue
 import com.rpfcoding.snoozeloo.feature_alarm.domain.LocalAlarmDataSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -39,6 +40,25 @@ class AlarmRepositoryImpl(
         }
     }
 
+    override suspend fun toggleDay(day: DayValue, alarm: Alarm) {
+        // Cancel alarm first to avoid conflict.
+        alarmScheduler.cancel(alarm)
+
+
+        val repeatDays = alarm.repeatDays.toMutableSet()
+
+        // Remove it from the set if it exists.
+        if (repeatDays.contains(day)) {
+            repeatDays.remove(day)
+        } else { // Or else, add it in the set AND schedule the alarm.
+            repeatDays.add(day)
+            alarmScheduler.schedule(alarm)
+        }
+
+        // Finally, update the DB
+        localAlarmDataSource.upsert(alarm.copy(repeatDays = repeatDays))
+    }
+
     override suspend fun disableAlarmById(id: String) {
         localAlarmDataSource.disableAlarmById(id)
     }
@@ -51,16 +71,17 @@ class AlarmRepositoryImpl(
         localAlarmDataSource.deleteById(id)
     }
 
-    override suspend fun scheduleAllEnabledAlarms() = withContext(Dispatchers.IO) {
-        val setAlarmsDeferred = getAll().first().map { alarm ->
-            async {
-                if (alarm.enabled) {
-                    alarmScheduler.schedule(alarm)
+    override suspend fun scheduleAllEnabledAlarms() {
+        withContext(Dispatchers.IO) {
+            val setAlarmsDeferred = getAll().first().map { alarm ->
+                async {
+                    if (alarm.enabled) {
+                        alarmScheduler.schedule(alarm)
+                    }
                 }
             }
-        }
 
-        setAlarmsDeferred.awaitAll()
-        Unit
+            setAlarmsDeferred.awaitAll()
+        }
     }
 }

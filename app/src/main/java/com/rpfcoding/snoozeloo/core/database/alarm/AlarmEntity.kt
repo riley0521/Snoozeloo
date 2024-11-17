@@ -11,5 +11,8 @@ data class AlarmEntity(
     val hour: Int,
     val minute: Int,
     val enabled: Boolean,
-    val ringtoneUri: String
+    val repeatDays: Set<Int>,
+    val volume: Int,
+    val ringtoneUri: String,
+    val vibrate: Boolean
 )

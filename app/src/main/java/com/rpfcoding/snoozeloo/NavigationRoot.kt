@@ -6,15 +6,16 @@ import androidx.lifecycle.ViewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import androidx.navigation.navigation
 import com.rpfcoding.snoozeloo.feature_alarm.presentation.add_edit.AddEditAlarmAction
 import com.rpfcoding.snoozeloo.feature_alarm.presentation.add_edit.AddEditAlarmScreenRoot
 import com.rpfcoding.snoozeloo.feature_alarm.presentation.add_edit.AddEditAlarmViewModel
 import com.rpfcoding.snoozeloo.feature_alarm.presentation.list.AlarmListScreenRoot
 import com.rpfcoding.snoozeloo.feature_alarm.presentation.ringtone_list.RingtoneListScreenRoot
-import kotlinx.serialization.Serializable
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
@@ -22,38 +23,36 @@ fun NavigationRoot(
     navController: NavHostController
 ) {
 
-    NavHost(navController = navController, startDestination = AlarmGraph.AlarmRoot) {
+    NavHost(navController = navController, startDestination = "alarm") {
         alarmGraph(navController)
     }
 }
 
-object AlarmGraph {
-    @Serializable
-    data object AlarmRoot
-
-    @Serializable
-    data object AlarmList
-
-    @Serializable
-    data class AddEditAlarm(val alarmId: String? = null)
-
-    @Serializable
-    data object RingtoneList
-}
-
 private fun NavGraphBuilder.alarmGraph(navController: NavHostController) {
-    navigation<AlarmGraph.AlarmRoot>(
-        startDestination = AlarmGraph.AlarmList
+    navigation(
+        route = "alarm",
+        startDestination = "alarm_list"
     ) {
-        composable<AlarmGraph.AlarmList> {
+        composable(route = "alarm_list") { entry ->
             AlarmListScreenRoot(
                 navigateToAddEditScreen = {
-                    navController.navigate(AlarmGraph.AddEditAlarm(alarmId = it))
+                    navController.navigate("alarm_detail/$it")
                 }
             )
         }
 
-        composable<AlarmGraph.AddEditAlarm> { entry ->
+        composable(
+            route = "alarm_detail/{alarmId}",
+            arguments = listOf(
+                navArgument(
+                    name = "alarmId"
+                ) {
+                    this.type = NavType.StringType
+                    this.nullable = true
+                }
+            )
+        ) { entry ->
+            val alarmId = entry.arguments?.getString("alarmId")
             val viewModel = entry.sharedKoinViewModel<AddEditAlarmViewModel>(navController)
 
             AddEditAlarmScreenRoot(
@@ -61,13 +60,14 @@ private fun NavGraphBuilder.alarmGraph(navController: NavHostController) {
                     navController.navigateUp()
                 },
                 navigateToRingtoneList = {
-                    navController.navigate(AlarmGraph.RingtoneList)
+                    navController.navigate("alarm_ringtones")
                 },
+                alarmId = alarmId,
                 viewModel = viewModel
             )
         }
 
-        composable<AlarmGraph.RingtoneList> { entry ->
+        composable(route = "alarm_ringtones") { entry ->
             val viewModel = entry.sharedKoinViewModel<AddEditAlarmViewModel>(navController)
 
             RingtoneListScreenRoot(

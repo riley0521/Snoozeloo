@@ -7,7 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rpfcoding.snoozeloo.feature_alarm.domain.AlarmRepository
 import com.rpfcoding.snoozeloo.feature_alarm.domain.DayValue
-import com.rpfcoding.snoozeloo.feature_alarm.domain.GetCurrentAndFutureDateUseCase
+import com.rpfcoding.snoozeloo.feature_alarm.domain.GetFutureDateUseCase
 import com.rpfcoding.snoozeloo.feature_alarm.domain.GetTimeLeftInSecondsUseCase
 import com.rpfcoding.snoozeloo.feature_alarm.domain.GetTimeToSleepInSecondsUseCase
 import kotlinx.coroutines.flow.Flow
@@ -17,7 +17,7 @@ import kotlinx.coroutines.launch
 
 class AlarmListViewModel(
     private val alarmRepository: AlarmRepository,
-    private val getCurrentAndFutureDateUseCase: GetCurrentAndFutureDateUseCase,
+    private val getFutureDateUseCase: GetFutureDateUseCase,
     private val getTimeLeftInSecondsUseCase: GetTimeLeftInSecondsUseCase,
     private val getTimeToSleepInSecondsUseCase: GetTimeToSleepInSecondsUseCase
 ): ViewModel() {
@@ -57,12 +57,12 @@ class AlarmListViewModel(
     }
 
     fun getTimeLeftInSecondsFlow(hour: Int, minute: Int, repeatDays: Set<DayValue>): Flow<Long> {
-        val futureDateTime = getCurrentAndFutureDateUseCase(hour, minute, repeatDays)
+        val futureDateTime = getFutureDateUseCase(hour, minute, repeatDays)
         return getTimeLeftInSecondsUseCase(futureDateTime)
     }
 
     fun getTimeToSleepInSecondsFlow(hour: Int, minute: Int, repeatDays: Set<DayValue>): Flow<Long?> {
-        val futureDateTime = getCurrentAndFutureDateUseCase(hour, minute, repeatDays)
+        val futureDateTime = getFutureDateUseCase(hour, minute, repeatDays)
         return getTimeToSleepInSecondsUseCase(hour, futureDateTime)
     }
 }

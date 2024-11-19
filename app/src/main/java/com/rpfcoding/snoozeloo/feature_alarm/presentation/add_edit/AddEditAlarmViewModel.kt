@@ -4,9 +4,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.rpfcoding.snoozeloo.core.domain.ringtone.RingtoneManager
 import com.rpfcoding.snoozeloo.core.util.formatNumberWithLeadingZero
 import com.rpfcoding.snoozeloo.feature_alarm.domain.Alarm
 import com.rpfcoding.snoozeloo.feature_alarm.domain.AlarmRepository
@@ -22,13 +22,13 @@ import kotlin.math.roundToInt
 class AddEditAlarmViewModel(
     private val alarmRepository: AlarmRepository,
     private val validateAlarmUseCase: ValidateAlarmUseCase,
-    savedStateHandle: SavedStateHandle
+    private val ringtoneManager: RingtoneManager
 ): ViewModel() {
 
     var state by mutableStateOf(AddEditAlarmState())
         private set
 
-    private val alarmId = savedStateHandle.get<String>("alarmId")
+    private var alarmId: String? = null
 
     private val hourFlow = snapshotFlow { state.hour }
     private val minuteFlow = snapshotFlow { state.minute }
@@ -41,15 +41,24 @@ class AddEditAlarmViewModel(
             val isValid = validateAlarmUseCase(hour, minute)
             state = state.copy(canSave = isValid)
         }.launchIn(viewModelScope)
+    }
 
-        viewModelScope.launch {
-            val existingAlarm = alarmId?.let { alarmRepository.getById(it) } ?: return@launch
-            state = state.copy(
-                alarmName = existingAlarm.name,
-                hour = formatNumberWithLeadingZero(existingAlarm.hour),
-                minute = formatNumberWithLeadingZero(existingAlarm.minute)
-            )
-        }
+    fun getExistingAlarm(alarmId: String?) = viewModelScope.launch {
+        val existingAlarm = alarmId?.let { alarmRepository.getById(it) } ?: return@launch
+        val ringtone = ringtoneManager.getAvailableRingtones().firstOrNull { it.second == existingAlarm.ringtoneUri }
+        this@AddEditAlarmViewModel.alarmId = alarmId
+
+        state = state.copy(
+            alarmName = existingAlarm.name,
+            hour = formatNumberWithLeadingZero(existingAlarm.hour),
+            minute = formatNumberWithLeadingZero(existingAlarm.minute),
+            repeatDays = existingAlarm.repeatDays,
+            ringtone = ringtone
+                ?: ringtoneManager.getAvailableRingtones().getOrNull(1) // The default ringtone
+                ?: Pair("", ""), // Shouldn't happen
+            volume = (existingAlarm.volume / 100f),
+            vibrate = existingAlarm.vibrate
+        )
     }
 
     fun onAction(action: AddEditAlarmAction) {
@@ -87,9 +96,8 @@ class AddEditAlarmViewModel(
             }
             AddEditAlarmAction.OnSaveClick -> {
                 viewModelScope.launch {
-                    val existingAlarm = alarmId?.let { alarmRepository.getById(it) }
                     val updatedAlarm = Alarm(
-                        id = existingAlarm?.id ?: UUID.randomUUID().toString(),
+                        id = alarmId ?: UUID.randomUUID().toString(),
                         name = if (state.alarmName.isBlank()) "" else state.alarmName.trim(),
                         hour = state.hour.toIntOrNull() ?: 0,
                         minute = state.minute.toIntOrNull() ?: 0,

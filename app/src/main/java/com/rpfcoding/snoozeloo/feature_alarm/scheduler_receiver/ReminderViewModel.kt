@@ -23,4 +23,13 @@ class ReminderViewModel(
     fun disableAlarm(id: String) = viewModelScope.launch {
         alarmRepository.disableAlarmById(id)
     }
+
+    fun rescheduleAlarm() = viewModelScope.launch {
+        alarm?.let {
+            // Here we don't need to disable the alarm first since we're not in AlarmListScreen.
+            // This activity will only trigger if the device is asleep.
+            // So, we can just do it like this.
+            alarmRepository.upsert(it.copy(enabled = true))
+        }
+    }
 }

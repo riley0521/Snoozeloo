@@ -14,7 +14,6 @@ import android.os.Looper
 import androidx.core.app.NotificationCompat
 import com.rpfcoding.snoozeloo.R
 import com.rpfcoding.snoozeloo.core.domain.ringtone.ALARM_MAX_REMINDER_MILLIS
-import com.rpfcoding.snoozeloo.core.util.hideNotification
 import com.rpfcoding.snoozeloo.core.util.isOreoPlus
 import com.rpfcoding.snoozeloo.core.util.isScreenOn
 import com.rpfcoding.snoozeloo.feature_alarm.domain.Alarm
@@ -66,7 +65,12 @@ class AlarmReceiver: BroadcastReceiver() {
 
                     handler.postDelayed(
                         {
-                            context.hideNotification(alarm.id.hashCode())
+                            val dismissAlarmIntent = Intent(context, DismissAlarmReceiver::class.java).apply {
+                                putExtra(AlarmConstants.EXTRA_ALARM_ID, alarm.id)
+                                putExtra(AlarmConstants.EXTRA_ALARM_CUSTOM_CHANNEL_ID, alarm.id)
+                                putExtra(AlarmConstants.EXTRA_SHOULD_SNOOZE, true)
+                            }
+                            context.sendBroadcast(dismissAlarmIntent)
                         },
                         ALARM_MAX_REMINDER_MILLIS
                     )
@@ -117,7 +121,7 @@ class AlarmReceiver: BroadcastReceiver() {
                 val notificationManager = context.getSystemService(NotificationManager::class.java)
                 val channel = NotificationChannel(channelId, alarmName, NotificationManager.IMPORTANCE_HIGH).apply {
                     setBypassDnd(true)
-                    enableVibration(true)
+                    enableVibration(alarm.vibrate)
                 }
                 notificationManager.createNotificationChannel(channel)
             }
@@ -138,12 +142,12 @@ class AlarmReceiver: BroadcastReceiver() {
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
 
             if (alarm.vibrate) {
-                builder.setVibrate(vibrateArray)
+                builder.setVibrate(vibrateArray) // Ignored in Android O above since we set the vibration in NotificationChannel.
+            } else {
+                builder.setVibrate(LongArray(1) {0L})
             }
 
-            return builder.build().apply {
-                flags = flags or Notification.FLAG_INSISTENT
-            }
+            return builder.build()
         }
 
         private fun getDismissAlarmPendingIntent(context: Context, alarm: Alarm, channelId: String): PendingIntent {

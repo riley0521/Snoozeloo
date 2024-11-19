@@ -3,7 +3,7 @@ package com.rpfcoding.snoozeloo.feature_alarm.domain
 import java.time.DayOfWeek
 import java.time.LocalDateTime
 
-class GetCurrentAndFutureDateUseCase(
+class GetFutureDateUseCase(
     private val now: LocalDateTime? = null
 ) {
 
@@ -44,16 +44,24 @@ class GetCurrentAndFutureDateUseCase(
                 .withSecond(0)
         } else {
             val tomorrow = curDateTime.plusDays(1)
-            val isTomorrowAvailable = isDayOfWeekPresentInRepeatDays(tomorrow.dayOfWeek, repeatDays)
+            val isTomorrowAvailable = if (isRepeatable) {
+                isDayOfWeekPresentInRepeatDays(tomorrow.dayOfWeek, repeatDays)
+            } else {
+                true
+            }
 
-            // IF the set hour/minute is earlier than current time AND
-            // tomorrow is on repeatDays OR isRepeatable == false. Then we can set alarm for tomorrow.
-            if (hour <= curDateTime.hour && minute <= curDateTime.minute && (isTomorrowAvailable || !isRepeatable)) {
+
+            if ((hour >= curDateTime.hour && minute > curDateTime.minute) || hour > curDateTime.hour) {
+                curDateTime
+                    .withHour(hour)
+                    .withMinute(minute)
+                    .withSecond(0)
+            } else if (isTomorrowAvailable) {
                 tomorrow
                     .withHour(hour)
                     .withMinute(minute)
                     .withSecond(0)
-            } else { // We assume here that isRepeatable == true
+            } else {
                 getFutureDateWithRepeatDays(tomorrow, hour, minute, repeatDays)
             }
         }

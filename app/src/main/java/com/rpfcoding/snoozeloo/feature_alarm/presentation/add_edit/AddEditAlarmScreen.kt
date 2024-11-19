@@ -63,6 +63,7 @@ import org.koin.compose.koinInject
 fun AddEditAlarmScreenRoot(
     navigateBack: () -> Unit,
     navigateToRingtoneList: () -> Unit,
+    alarmId: String?,
     viewModel: AddEditAlarmViewModel = koinViewModel(),
     ringtoneManager: RingtoneManager = koinInject()
 ) {
@@ -84,6 +85,10 @@ fun AddEditAlarmScreenRoot(
 
     LaunchedEffect(state.defaultRingtoneFetched) {
         if (!state.defaultRingtoneFetched) {
+            // Set the state with existingAlarm data.
+            viewModel.getExistingAlarm(alarmId)
+
+            // Set the default ringtone.
             val availableRingtones = ringtoneManager.getAvailableRingtones()
             viewModel.onAction(
                 AddEditAlarmAction
@@ -92,6 +97,8 @@ fun AddEditAlarmScreenRoot(
                             ?: Pair("", "")
                     )
             )
+
+            // Acknowledge, so this block won't re-trigger again if the user comes back from RingtoneListScreen.
             viewModel.onAction(AddEditAlarmAction.OnDefaultAlarmRingtoneFetch)
         }
     }

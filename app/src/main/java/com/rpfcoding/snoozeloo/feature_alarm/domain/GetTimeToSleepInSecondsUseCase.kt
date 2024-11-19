@@ -35,13 +35,13 @@ class GetTimeToSleepInSecondsUseCase(
         val tomorrow = curDateTime.plusDays(1)
 
         // If future dayOfYear is not equals to dayOfYear tomorrow, we don't have to tell user when to sleep.
-        // Also, if time is set to 10am tomorrow, the sleep time is 2am.
+        // Also, if time is set to 10am tomorrow, the sleep time is 2am which is same day.
         if (tomorrow.dayOfYear != futureDateTime.dayOfYear && curDateTime.dayOfYear != futureDateTime.dayOfYear) {
             return null
         }
 
         val sleepDateTime = futureDateTime.plusHours(-8)
-        if (curDateTime.hour > sleepDateTime.hour) {
+        if (curDateTime.dayOfYear == sleepDateTime.dayOfYear && curDateTime.hour > sleepDateTime.hour) {
             return null
         }
 

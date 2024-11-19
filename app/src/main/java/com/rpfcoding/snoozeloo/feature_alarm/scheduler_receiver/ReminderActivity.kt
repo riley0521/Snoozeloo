@@ -20,6 +20,7 @@ import com.rpfcoding.snoozeloo.core.util.isOreoMr1Plus
 import com.rpfcoding.snoozeloo.core.util.isOreoPlus
 import com.rpfcoding.snoozeloo.feature_alarm.domain.Alarm
 import com.rpfcoding.snoozeloo.feature_alarm.domain.AlarmConstants
+import com.rpfcoding.snoozeloo.feature_alarm.domain.AlarmScheduler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -31,6 +32,7 @@ class ReminderActivity : ComponentActivity() {
 
     private val viewModel: ReminderViewModel by viewModel()
     private val ringtoneManager: MyRingtoneManager by inject()
+    private val alarmScheduler: AlarmScheduler by inject()
     private val scope: CoroutineScope by inject()
     private val vibrator by lazy {
         getSystemService(Vibrator::class.java)
@@ -54,7 +56,9 @@ class ReminderActivity : ComponentActivity() {
 
                 LaunchedEffect(Unit) {
                     delay(ALARM_MAX_REMINDER_MILLIS)
-                    disableAlarmAndFinish(alarmId)
+                    viewModel.alarm?.let {
+                        disableAlarmAndFinish(it, it.isOneTime, shouldSnooze = true)
+                    }
                 }
 
                 LaunchedEffect(viewModel.alarm, effectsSet) {
@@ -64,11 +68,14 @@ class ReminderActivity : ComponentActivity() {
                     }
                 }
 
-                if (viewModel.alarm != null) {
+                viewModel.alarm?.let { alarm ->
                     AlarmTriggerScreen(
                         alarm = viewModel.alarm!!,
                         onTurnOffClick = {
-                            disableAlarmAndFinish(alarmId)
+                            disableAlarmAndFinish(alarm, alarm.isOneTime)
+                        },
+                        onSnoozeClick = {
+                            disableAlarmAndFinish(alarm, alarm.isOneTime, shouldSnooze = true)
                         }
                     )
                 }
@@ -76,9 +83,20 @@ class ReminderActivity : ComponentActivity() {
         }
     }
 
-    private fun disableAlarmAndFinish(alarmId: String) {
-        viewModel.disableAlarm(alarmId)
-        hideNotification(alarmId.hashCode())
+    private fun disableAlarmAndFinish(alarm: Alarm, isOneTime: Boolean, shouldSnooze: Boolean = false) {
+        if (shouldSnooze) {
+            alarmScheduler.schedule(
+                alarm = alarm,
+                shouldSnooze = true
+            )
+        } else {
+            if (isOneTime) {
+                viewModel.disableAlarm(alarm.id)
+            } else {
+                viewModel.rescheduleAlarm()
+            }
+        }
+        hideNotification(alarm.id.hashCode())
         ringtoneManager.stop()
         vibrator.cancel()
         finish()

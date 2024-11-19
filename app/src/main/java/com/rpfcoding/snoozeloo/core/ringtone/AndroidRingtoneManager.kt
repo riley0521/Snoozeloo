@@ -4,9 +4,6 @@ import android.content.Context
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.net.Uri
-import android.os.Handler
-import android.os.Looper
-import com.rpfcoding.snoozeloo.core.domain.ringtone.ALARM_MAX_REMINDER_MILLIS
 import com.rpfcoding.snoozeloo.core.domain.ringtone.NameAndUri
 import com.rpfcoding.snoozeloo.core.domain.ringtone.RingtoneManager
 import com.rpfcoding.snoozeloo.core.domain.ringtone.SILENT
@@ -70,7 +67,10 @@ class AndroidRingtoneManager(
             null
         } ?: return
 
-        mediaPlayer?.stop()
+        if (isPlaying()) {
+            stop()
+        }
+
         mediaPlayer = MediaPlayer().apply {
             setAudioStreamType(AudioManager.STREAM_ALARM)
             setDataSource(context, fullUri)
@@ -79,14 +79,11 @@ class AndroidRingtoneManager(
             start()
             this.isLooping = isLooping
         }
-
-        Handler(Looper.getMainLooper()).postDelayed({
-            stop()
-        }, ALARM_MAX_REMINDER_MILLIS)
     }
 
     override fun stop() {
         mediaPlayer?.stop()
+        mediaPlayer?.release()
         mediaPlayer = null
     }
 

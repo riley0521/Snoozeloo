@@ -50,13 +50,15 @@ class AlarmRepositoryImpl(
         // Remove it from the set if it exists.
         if (repeatDays.contains(day)) {
             repeatDays.remove(day)
-        } else { // Or else, add it in the set AND schedule the alarm.
+        } else { // Or else, add it in the set
             repeatDays.add(day)
-            alarmScheduler.schedule(alarm)
         }
 
-        // Finally, update the DB
-        localAlarmDataSource.upsert(alarm.copy(repeatDays = repeatDays))
+        val updatedAlarm = alarm.copy(repeatDays = repeatDays)
+
+        // Finally, update the DB AND schedule updated alarm.
+        localAlarmDataSource.upsert(updatedAlarm)
+        alarmScheduler.schedule(updatedAlarm)
     }
 
     override suspend fun disableAlarmById(id: String) {

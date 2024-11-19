@@ -3,7 +3,7 @@ package com.rpfcoding.snoozeloo.feature_alarm.data.di
 import com.rpfcoding.snoozeloo.feature_alarm.data.AlarmRepositoryImpl
 import com.rpfcoding.snoozeloo.feature_alarm.data.RoomLocalAlarmDataSource
 import com.rpfcoding.snoozeloo.feature_alarm.domain.AlarmRepository
-import com.rpfcoding.snoozeloo.feature_alarm.domain.GetCurrentAndFutureDateUseCase
+import com.rpfcoding.snoozeloo.feature_alarm.domain.GetFutureDateUseCase
 import com.rpfcoding.snoozeloo.feature_alarm.domain.GetTimeLeftInSecondsUseCase
 import com.rpfcoding.snoozeloo.feature_alarm.domain.GetTimeToSleepInSecondsUseCase
 import com.rpfcoding.snoozeloo.feature_alarm.domain.LocalAlarmDataSource
@@ -16,7 +16,7 @@ val featureAlarmDataModule = module {
     singleOf(::RoomLocalAlarmDataSource).bind<LocalAlarmDataSource>()
     singleOf(::AlarmRepositoryImpl).bind<AlarmRepository>()
     singleOf(::ValidateAlarmUseCase)
-    singleOf(::GetCurrentAndFutureDateUseCase)
+    single { GetFutureDateUseCase() }
     singleOf(::GetTimeLeftInSecondsUseCase)
-    singleOf(::GetTimeToSleepInSecondsUseCase)
+    single { GetTimeToSleepInSecondsUseCase() }
 }

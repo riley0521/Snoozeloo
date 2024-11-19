@@ -2,6 +2,7 @@
 
 package com.rpfcoding.snoozeloo.feature_alarm.presentation.add_edit
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -50,30 +51,31 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.rpfcoding.snoozeloo.R
 import com.rpfcoding.snoozeloo.core.components.InputTimeTextField
-import com.rpfcoding.snoozeloo.core.domain.ringtone.RingtoneManager
 import com.rpfcoding.snoozeloo.core.presentation.designsystem.SnoozelooTheme
 import com.rpfcoding.snoozeloo.core.util.showToast
 import com.rpfcoding.snoozeloo.feature_alarm.domain.DayValue
 import com.rpfcoding.snoozeloo.feature_alarm.presentation.components.DayChip
 import kotlinx.coroutines.flow.collectLatest
 import org.koin.androidx.compose.koinViewModel
-import org.koin.compose.koinInject
 
 @Composable
 fun AddEditAlarmScreenRoot(
     navigateBack: () -> Unit,
     navigateToRingtoneList: () -> Unit,
     alarmId: String?,
-    viewModel: AddEditAlarmViewModel = koinViewModel(),
-    ringtoneManager: RingtoneManager = koinInject()
+    viewModel: AddEditAlarmViewModel = koinViewModel()
 ) {
     val context = LocalContext.current
     val state = viewModel.state
+    var isNavigatingBack by remember { mutableStateOf(false) }
+
+    BackHandler {}
 
     LaunchedEffect(Unit) {
         viewModel.events.collectLatest { event ->
             when (event) {
                 AddEditAlarmEvent.OnSuccess -> {
+                    isNavigatingBack = true
                     navigateBack()
                 }
                 is AddEditAlarmEvent.OnFailure -> {
@@ -81,25 +83,16 @@ fun AddEditAlarmScreenRoot(
                 }
             }
         }
+        isNavigatingBack = false
     }
 
-    LaunchedEffect(state.defaultRingtoneFetched) {
-        if (!state.defaultRingtoneFetched) {
+    LaunchedEffect(state.existingAlarmFetched) {
+        if (!state.existingAlarmFetched && !isNavigatingBack) {
             // Set the state with existingAlarm data.
             viewModel.getExistingAlarm(alarmId)
 
-            // Set the default ringtone.
-            val availableRingtones = ringtoneManager.getAvailableRingtones()
-            viewModel.onAction(
-                AddEditAlarmAction
-                    .OnAlarmRingtoneChange(
-                        availableRingtones.getOrNull(1)
-                            ?: Pair("", "")
-                    )
-            )
-
             // Acknowledge, so this block won't re-trigger again if the user comes back from RingtoneListScreen.
-            viewModel.onAction(AddEditAlarmAction.OnDefaultAlarmRingtoneFetch)
+            viewModel.onAction(AddEditAlarmAction.AcknowledgeExistingAlarm)
         }
     }
 
@@ -107,7 +100,10 @@ fun AddEditAlarmScreenRoot(
         state = viewModel.state,
         onAction = { action ->
             when (action) {
-                AddEditAlarmAction.OnCloseClick -> navigateBack()
+                AddEditAlarmAction.OnCloseClick -> {
+                    isNavigatingBack = true
+                    navigateBack()
+                }
                 AddEditAlarmAction.OnAlarmRingtoneClick -> navigateToRingtoneList()
                 else -> viewModel.onAction(action)
             }
@@ -279,7 +275,7 @@ private fun AddAlarmScreenMainContent(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = state.ringtone.first,
+                text = state.ringtone?.first.orEmpty(),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.secondary,
                 modifier = Modifier

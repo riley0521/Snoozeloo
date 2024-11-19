@@ -54,8 +54,7 @@ class AddEditAlarmViewModel(
             minute = formatNumberWithLeadingZero(existingAlarm.minute),
             repeatDays = existingAlarm.repeatDays,
             ringtone = ringtone
-                ?: ringtoneManager.getAvailableRingtones().getOrNull(1) // The default ringtone
-                ?: Pair("", ""), // Shouldn't happen
+                ?: ringtoneManager.getAvailableRingtones().getOrNull(1), // The default ringtone
             volume = (existingAlarm.volume / 100f),
             vibrate = existingAlarm.vibrate
         )
@@ -91,8 +90,8 @@ class AddEditAlarmViewModel(
             is AddEditAlarmAction.OnAlarmRingtoneChange -> {
                 state = state.copy(ringtone = action.value)
             }
-            AddEditAlarmAction.OnDefaultAlarmRingtoneFetch -> {
-                state = state.copy(defaultRingtoneFetched = true)
+            AddEditAlarmAction.AcknowledgeExistingAlarm -> {
+                state = state.copy(existingAlarmFetched = true)
             }
             AddEditAlarmAction.OnSaveClick -> {
                 viewModelScope.launch {
@@ -104,7 +103,7 @@ class AddEditAlarmViewModel(
                         enabled = true,
                         repeatDays = state.repeatDays,
                         volume = (state.volume * 100).roundToInt().coerceAtMost(100),
-                        ringtoneUri = state.ringtone.second,
+                        ringtoneUri = state.ringtone?.second.orEmpty(),
                         vibrate = state.vibrate
                     )
                     alarmRepository.upsert(updatedAlarm)
@@ -113,5 +112,9 @@ class AddEditAlarmViewModel(
             }
             else -> Unit
         }
+    }
+
+    fun resetState() {
+        state = state.copy(existingAlarmFetched = false)
     }
 }

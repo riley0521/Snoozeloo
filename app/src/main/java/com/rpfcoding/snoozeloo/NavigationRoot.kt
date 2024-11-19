@@ -58,6 +58,9 @@ private fun NavGraphBuilder.alarmGraph(navController: NavHostController) {
             AddEditAlarmScreenRoot(
                 navigateBack = {
                     navController.navigateUp()
+                    // We need to reset state because alarm_list is in the same navGraph.
+                    // So, this viewModel will not be cleared.
+                    viewModel.resetState()
                 },
                 navigateToRingtoneList = {
                     navController.navigate("alarm_ringtones")

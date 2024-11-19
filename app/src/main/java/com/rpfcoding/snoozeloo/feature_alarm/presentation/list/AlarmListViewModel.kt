@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.rpfcoding.snoozeloo.feature_alarm.domain.Alarm
 import com.rpfcoding.snoozeloo.feature_alarm.domain.AlarmRepository
 import com.rpfcoding.snoozeloo.feature_alarm.domain.DayValue
 import com.rpfcoding.snoozeloo.feature_alarm.domain.GetFutureDateUseCase
@@ -30,7 +31,8 @@ class AlarmListViewModel(
             .getAll()
             .onEach { alarms ->
                 state = state.copy(
-                    alarms = alarms
+                    // Sort alarms by hour and then by minute in ascending order.
+                    alarms = alarms.sortedWith(compareBy<Alarm> { it.hour }.thenBy { it.minute })
                 )
             }.launchIn(viewModelScope)
     }

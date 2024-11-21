@@ -59,7 +59,7 @@ fun AlarmTriggerScreen(
         )
         Spacer(modifier = Modifier.height(10.dp))
         Text(
-            text = alarm.name.uppercase(),
+            text = alarm.name.ifBlank { "Alarm" }.uppercase(),
             style = MaterialTheme.typography.bodyMedium,
             fontSize = 24.sp,
             lineHeight = 29.2.sp

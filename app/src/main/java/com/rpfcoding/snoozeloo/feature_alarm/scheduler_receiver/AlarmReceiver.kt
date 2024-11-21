@@ -105,6 +105,7 @@ class AlarmReceiver: BroadcastReceiver() {
                 RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
             }
             val channelId = alarm.id
+            val alarmName = alarm.name.ifBlank { "Alarm" }
 
             ringtoneManager.play(
                 uri = ringtoneUri.toString(),
@@ -112,7 +113,7 @@ class AlarmReceiver: BroadcastReceiver() {
                 volume = alarm.volume / 100f
             )
             if (isOreoPlus()) {
-                val alarmName = alarm.name.ifBlank { "Alarm" }
+
                 val notificationManager = context.getSystemService(NotificationManager::class.java)
                 val channel = NotificationChannel(channelId, alarmName, NotificationManager.IMPORTANCE_HIGH).apply {
                     setBypassDnd(true)
@@ -126,7 +127,7 @@ class AlarmReceiver: BroadcastReceiver() {
 
             val builder = NotificationCompat.Builder(context, channelId)
                 .setSmallIcon(R.drawable.alarm)
-                .setContentTitle(alarm.name)
+                .setContentTitle(alarmName)
                 .setContentIntent(pendingIntent)
                 .setPriority(Notification.PRIORITY_HIGH)
                 .setAutoCancel(true)

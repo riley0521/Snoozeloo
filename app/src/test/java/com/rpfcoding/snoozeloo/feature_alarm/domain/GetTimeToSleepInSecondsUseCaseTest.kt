@@ -13,7 +13,7 @@ class GetTimeToSleepInSecondsUseCaseTest {
     private lateinit var getTimeToSleepInSecondsUseCase: GetTimeToSleepInSecondsUseCase
 
     @Test
-    fun `test set alarm to 4am tomorrow, today is 3pm`() = runTest {
+    fun `test set alarm to 4am tomorrow, today is 5pm`() = runTest {
         val curDateTime = LocalDateTime.of(2024, 11, 15, 17, 0)
         getTimeToSleepInSecondsUseCase = GetTimeToSleepInSecondsUseCase(now = curDateTime)
 

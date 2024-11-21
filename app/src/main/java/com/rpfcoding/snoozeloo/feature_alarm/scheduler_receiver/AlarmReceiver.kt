@@ -43,9 +43,11 @@ class AlarmReceiver: BroadcastReceiver() {
             if (context == null) {
                 return
             }
+            val alarm = runBlocking { alarmRepository.getById(alarmId) } ?: return
+            val alarmName = alarm.name.ifBlank { "Alarm" }
 
             val reminderActIntent = Intent(context, ReminderActivity::class.java).apply {
-                putExtra(AlarmConstants.EXTRA_ALARM_ID, alarmId)
+                putExtra(AlarmConstants.EXTRA_ALARM_ID, alarm.id)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
 
@@ -57,38 +59,31 @@ class AlarmReceiver: BroadcastReceiver() {
             )
 
             if (context.isScreenOn()) {
-                println("SCREEN ON")
+                showAlarmNotification(context, pendingIntent, alarm)
 
-                val alarm = runBlocking { alarmRepository.getById(alarmId) }
-                alarm?.let {
-                    showAlarmNotification(context, pendingIntent, alarm)
-
-                    handler.postDelayed(
-                        {
-                            val dismissAlarmIntent = Intent(context, DismissAlarmReceiver::class.java).apply {
-                                putExtra(AlarmConstants.EXTRA_ALARM_ID, alarm.id)
-                                putExtra(AlarmConstants.EXTRA_ALARM_CUSTOM_CHANNEL_ID, alarm.id)
-                                putExtra(AlarmConstants.EXTRA_SHOULD_SNOOZE, true)
-                            }
-                            context.sendBroadcast(dismissAlarmIntent)
-                        },
-                        ALARM_MAX_REMINDER_MILLIS
-                    )
-                }
+                handler.postDelayed(
+                    {
+                        val dismissAlarmIntent = Intent(context, DismissAlarmReceiver::class.java).apply {
+                            putExtra(AlarmConstants.EXTRA_ALARM_ID, alarm.id)
+                            putExtra(AlarmConstants.EXTRA_ALARM_CUSTOM_CHANNEL_ID, alarm.id)
+                            putExtra(AlarmConstants.EXTRA_SHOULD_SNOOZE, true)
+                        }
+                        context.sendBroadcast(dismissAlarmIntent)
+                    },
+                    ALARM_MAX_REMINDER_MILLIS
+                )
             } else {
-                println("SCREEN OFF")
-
                 if (isOreoPlus()) {
                     val notificationManager = context.getSystemService(NotificationManager::class.java)
                     val builder = NotificationCompat.Builder(context, AlarmConstants.CHANNEL_ID)
                         .setSmallIcon(R.drawable.alarm)
-                        .setContentTitle("Alarm")
+                        .setContentTitle(alarmName)
                         .setAutoCancel(true)
                         .setPriority(NotificationCompat.PRIORITY_HIGH)
                         .setCategory(NotificationCompat.CATEGORY_ALARM)
                         .setFullScreenIntent(pendingIntent, true)
 
-                    notificationManager.notify(alarmId.hashCode(), builder.build())
+                    notificationManager.notify(alarm.id.hashCode(), builder.build())
                 } else {
                     context.startActivity(reminderActIntent)
                 }
@@ -136,6 +131,7 @@ class AlarmReceiver: BroadcastReceiver() {
                 .setPriority(Notification.PRIORITY_HIGH)
                 .setAutoCancel(true)
                 .setChannelId(channelId)
+                .addAction(-1, "Snooze", getDismissAlarmPendingIntent(context, alarm, channelId, true))
                 .addAction(-1, "Turn off", dismissAlarmPendingIntent)
                 .setDeleteIntent(dismissAlarmPendingIntent)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -147,13 +143,16 @@ class AlarmReceiver: BroadcastReceiver() {
                 builder.setVibrate(LongArray(1) {0L})
             }
 
-            return builder.build()
+            return builder.build().apply {
+                flags = flags or Notification.FLAG_INSISTENT
+            }
         }
 
-        private fun getDismissAlarmPendingIntent(context: Context, alarm: Alarm, channelId: String): PendingIntent {
+        private fun getDismissAlarmPendingIntent(context: Context, alarm: Alarm, channelId: String, shouldSnooze: Boolean = false): PendingIntent {
             val intent = Intent(context, DismissAlarmReceiver::class.java).apply {
                 putExtra(AlarmConstants.EXTRA_ALARM_ID, alarm.id)
                 putExtra(AlarmConstants.EXTRA_ALARM_CUSTOM_CHANNEL_ID, channelId)
+                putExtra(AlarmConstants.EXTRA_SHOULD_SNOOZE, shouldSnooze)
             }
             return PendingIntent.getBroadcast(
                 context,

@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
 import java.time.LocalDateTime
+import java.time.temporal.ChronoUnit
 
 /**
  * If the alarm is tomorrow and is set between 4am to 10am.
@@ -40,11 +41,11 @@ class GetTimeToSleepInSecondsUseCase(
             return null
         }
 
-        val sleepDateTime = futureDateTime.plusHours(-8)
-        if (curDateTime.dayOfYear == sleepDateTime.dayOfYear && curDateTime.hour > sleepDateTime.hour) {
+        val timeDiff = ChronoUnit.HOURS.between(curDateTime, futureDateTime)
+        if (timeDiff < 8) {
             return null
         }
 
-        return convertLocalDateTimeToEpochSeconds(sleepDateTime)
+        return convertLocalDateTimeToEpochSeconds(futureDateTime.plusHours(-8))
     }
 }

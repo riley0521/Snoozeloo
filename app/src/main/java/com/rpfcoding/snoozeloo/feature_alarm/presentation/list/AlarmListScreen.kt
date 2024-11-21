@@ -325,7 +325,7 @@ private fun AlarmListItem(
             }
         }
         Spacer(modifier = Modifier.height(16.dp))
-        if (hourToSleep != null) {
+        if (hourToSleep != null && alarm.enabled) {
             Text(
                 text = "Go to bed at ${formatSecondsToHourAndMinute(hourToSleep)} to get 8h of sleep",
                 style = MaterialTheme.typography.labelSmall,

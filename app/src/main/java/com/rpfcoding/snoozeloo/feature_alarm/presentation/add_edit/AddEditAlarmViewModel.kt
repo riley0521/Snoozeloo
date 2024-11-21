@@ -44,7 +44,10 @@ class AddEditAlarmViewModel(
     }
 
     fun getExistingAlarm(alarmId: String?) = viewModelScope.launch {
-        val existingAlarm = alarmId?.let { alarmRepository.getById(it) } ?: return@launch
+        val existingAlarm = alarmId?.let { alarmRepository.getById(it) } ?: run {
+            getDefaultRingtoneIfAlarmIsNull()
+            return@launch
+        }
         val ringtone = ringtoneManager.getAvailableRingtones().firstOrNull { it.second == existingAlarm.ringtoneUri }
         this@AddEditAlarmViewModel.alarmId = alarmId
 
@@ -60,16 +63,24 @@ class AddEditAlarmViewModel(
         )
     }
 
+    private fun getDefaultRingtoneIfAlarmIsNull() {
+        val ringtone = ringtoneManager.getAvailableRingtones().getOrNull(1)
+
+        state = state.copy(
+            ringtone = ringtone
+        )
+    }
+
     fun onAction(action: AddEditAlarmAction) {
         when (action) {
             is AddEditAlarmAction.OnEditAlarmNameTextChange -> {
                 state = state.copy(alarmName = action.value)
             }
             is AddEditAlarmAction.OnHourTextChange -> {
-                state = state.copy(hour = action.value.take(2))
+                state = state.copy(hour = action.value)
             }
             is AddEditAlarmAction.OnMinuteTextChange -> {
-                state = state.copy(minute = action.value.take(2))
+                state = state.copy(minute = action.value)
             }
             is AddEditAlarmAction.OnDayChipToggle -> {
                 val mutableRepeatDays = state.repeatDays.toMutableSet()

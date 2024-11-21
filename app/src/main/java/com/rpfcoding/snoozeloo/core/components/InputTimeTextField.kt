@@ -34,7 +34,8 @@ fun InputTimeTextField(
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     hint: String = "00",
-    maxLines: Int = 1
+    maxLines: Int = 1,
+    maxCharacter: Int = 2
 ) {
     var isFocused by remember {
         mutableStateOf(false)
@@ -55,7 +56,9 @@ fun InputTimeTextField(
     BasicTextField(
         value = value,
         onValueChange = {
-            onValueChange(it)
+            if (it.length <= maxCharacter) {
+                onValueChange(it)
+            }
         },
         textStyle = textStyle,
         keyboardOptions = KeyboardOptions(
@@ -80,21 +83,19 @@ fun InputTimeTextField(
                         textAlign = TextAlign.Center
                     )
                 } else if (value.isNotBlank()) {
-                    Text(
-                        text = value,
-                        style = textStyle,
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.5f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        it()
+                    }
                 }
             }
         },
         modifier = modifier
             .onFocusChanged {
                 isFocused = it.isFocused
-                if (!it.isFocused && value.length == 1) {
-                    onValueChange("0${value}")
-                }
             }
             .then(focusedBorderModifier),
         cursorBrush = SolidColor(Color.Transparent)

@@ -155,9 +155,14 @@ class AlarmReceiver: BroadcastReceiver() {
                 putExtra(AlarmConstants.EXTRA_ALARM_CUSTOM_CHANNEL_ID, channelId)
                 putExtra(AlarmConstants.EXTRA_SHOULD_SNOOZE, shouldSnooze)
             }
+            val requestCode = if (shouldSnooze) {
+                "${alarm.id}${AlarmConstants.SUFFIX_SNOOZE}".hashCode()
+            } else {
+                "${alarm.id}${AlarmConstants.SUFFIX_DISABLE}".hashCode()
+            }
             return PendingIntent.getBroadcast(
                 context,
-                alarm.id.hashCode(),
+                requestCode,
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )

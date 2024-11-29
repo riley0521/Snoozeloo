@@ -126,6 +126,7 @@ class AddEditAlarmViewModel(
     }
 
     fun resetState() {
-        state = state.copy(existingAlarmFetched = false)
+        alarmId = null
+        state = AddEditAlarmState()
     }
 }

@@ -3,12 +3,9 @@ package com.rpfcoding.snoozeloo.feature_alarm.domain
 import java.time.DayOfWeek
 import java.time.LocalDateTime
 
-class GetFutureDateUseCase(
-    private val now: LocalDateTime? = null
-) {
+class GetFutureDateUseCase {
 
-    operator fun invoke(hour: Int, minute: Int, repeatDays: Set<DayValue> = emptySet()): LocalDateTime {
-        val curDateTime = now ?: LocalDateTime.now()
+    operator fun invoke(hour: Int, minute: Int, repeatDays: Set<DayValue> = emptySet(), curDateTime: LocalDateTime = LocalDateTime.now()): LocalDateTime {
         val futureDateTime = getFutureDateWithRepeatDays(
                 curDateTime,
                 hour,

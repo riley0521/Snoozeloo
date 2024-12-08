@@ -7,15 +7,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rpfcoding.snoozeloo.feature_alarm.domain.Alarm
 import com.rpfcoding.snoozeloo.feature_alarm.domain.AlarmRepository
-import com.rpfcoding.snoozeloo.feature_alarm.domain.DayValue
 import com.rpfcoding.snoozeloo.feature_alarm.domain.GetFutureDateUseCase
 import com.rpfcoding.snoozeloo.feature_alarm.domain.GetTimeLeftInSecondsUseCase
 import com.rpfcoding.snoozeloo.feature_alarm.domain.GetTimeToSleepInSecondsUseCase
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
+@Suppress("OPT_IN_USAGE")
 class AlarmListViewModel(
     private val alarmRepository: AlarmRepository,
     private val getFutureDateUseCase: GetFutureDateUseCase,
@@ -29,11 +31,26 @@ class AlarmListViewModel(
     init {
         alarmRepository
             .getAll()
-            .onEach { alarms ->
-                state = state.copy(
-                    // Sort alarms by hour and then by minute in ascending order.
-                    alarms = alarms.sortedWith(compareBy<Alarm> { it.hour }.thenBy { it.minute })
-                )
+            .flatMapLatest { alarms ->
+                val alarmUiFlows = alarms
+                    .sortedWith(compareBy<Alarm> { it.hour }.thenBy { it.minute })
+                    .map { alarm ->
+                    val futureDateTime = getFutureDateUseCase(alarm.hour, alarm.minute, alarm.repeatDays)
+                    val timeLeftInSecondsFlow: Flow<Long> = getTimeLeftInSecondsUseCase(futureDateTime)
+                    val timeToSleepInSecondsFlow: Flow<Long?> = getTimeToSleepInSecondsUseCase(alarm.hour, futureDateTime)
+
+                    combine(timeLeftInSecondsFlow, timeToSleepInSecondsFlow) { timeLeft, timeToSleep ->
+                        AlarmUi(
+                            alarm = alarm,
+                            timeLeftInSeconds = timeLeft,
+                            timeToSleepInSeconds = timeToSleep
+                        )
+                    }
+                }
+
+                combine(alarmUiFlows) { it.toList() }
+            }.onEach { alarms ->
+                state = state.copy(alarmUi = alarms)
             }.launchIn(viewModelScope)
     }
 
@@ -56,15 +73,5 @@ class AlarmListViewModel(
             }
             else -> Unit
         }
-    }
-
-    fun getTimeLeftInSecondsFlow(hour: Int, minute: Int, repeatDays: Set<DayValue>): Flow<Long> {
-        val futureDateTime = getFutureDateUseCase(hour, minute, repeatDays)
-        return getTimeLeftInSecondsUseCase(futureDateTime)
-    }
-
-    fun getTimeToSleepInSecondsFlow(hour: Int, minute: Int, repeatDays: Set<DayValue>): Flow<Long?> {
-        val futureDateTime = getFutureDateUseCase(hour, minute, repeatDays)
-        return getTimeToSleepInSecondsUseCase(hour, futureDateTime)
     }
 }

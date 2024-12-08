@@ -10,15 +10,14 @@ import java.time.ZoneId
 
 class GetTimeToSleepInSecondsUseCaseTest {
 
-    private lateinit var getTimeToSleepInSecondsUseCase: GetTimeToSleepInSecondsUseCase
+    private val getTimeToSleepInSecondsUseCase = GetTimeToSleepInSecondsUseCase()
 
     @Test
     fun `test set alarm to 4am tomorrow, today is 5pm`() = runTest {
         val curDateTime = LocalDateTime.of(2024, 11, 15, 17, 0)
-        getTimeToSleepInSecondsUseCase = GetTimeToSleepInSecondsUseCase(now = curDateTime)
 
         val futureDateTime = curDateTime.plusDays(1)
-        val seconds = getTimeToSleepInSecondsUseCase(4, futureDateTime.withHour(4)).first()
+        val seconds = getTimeToSleepInSecondsUseCase(4, futureDateTime.withHour(4), curDateTime).first()
         val dateTime = seconds.toLocalDateTime()
 
         Assert.assertEquals(20, dateTime?.hour)
@@ -27,9 +26,8 @@ class GetTimeToSleepInSecondsUseCaseTest {
     @Test
     fun `test set alarm to 10am tomorrow, today is 1am`() = runTest {
         val curDateTime = LocalDateTime.of(2024, 11, 15, 1, 0)
-        getTimeToSleepInSecondsUseCase = GetTimeToSleepInSecondsUseCase(now = curDateTime)
 
-        val seconds = getTimeToSleepInSecondsUseCase(10, curDateTime.withHour(10)).first()
+        val seconds = getTimeToSleepInSecondsUseCase(10, curDateTime.withHour(10), curDateTime).first()
         val dateTime = seconds.toLocalDateTime()
 
         Assert.assertEquals(2, dateTime?.hour)

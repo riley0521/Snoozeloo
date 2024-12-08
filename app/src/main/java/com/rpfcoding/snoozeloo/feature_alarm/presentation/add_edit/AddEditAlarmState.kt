@@ -14,5 +14,6 @@ data class AddEditAlarmState(
     val error: String? = null,
     val canSave: Boolean = false,
     val isSaving: Boolean = false,
-    val existingAlarmFetched: Boolean = false
+    val existingAlarmFetched: Boolean = false,
+    val isDialogOpened: Boolean = false
 )

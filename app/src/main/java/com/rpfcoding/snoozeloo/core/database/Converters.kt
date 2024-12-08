@@ -1,16 +1,18 @@
 package com.rpfcoding.snoozeloo.core.database
 
 import androidx.room.TypeConverter
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 class Converters {
 
     @TypeConverter
     fun setToString(value: Set<Int>): String {
-        return value.joinToString(",")
+        return Json.encodeToString(value.sorted())
     }
 
     @TypeConverter
     fun stringToSet(value: String): Set<Int> {
-        return value.split(",").mapNotNull { it.toIntOrNull() }.toSet()
+        return Json.decodeFromString<Set<Int>>(value)
     }
 }

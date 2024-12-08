@@ -7,14 +7,18 @@ import android.net.Uri
 import com.rpfcoding.snoozeloo.core.domain.ringtone.NameAndUri
 import com.rpfcoding.snoozeloo.core.domain.ringtone.RingtoneManager
 import com.rpfcoding.snoozeloo.core.domain.ringtone.SILENT
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class AndroidRingtoneManager(
-    private val context: Context
+    private val context: Context,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ): RingtoneManager {
 
     private var mediaPlayer: MediaPlayer? = null
 
-    override fun getAvailableRingtones(): List<NameAndUri> {
+    override suspend fun getAvailableRingtones(): List<NameAndUri> = withContext(ioDispatcher) {
         val ringtoneManager = android.media.RingtoneManager(context).apply {
             setType(android.media.RingtoneManager.TYPE_ALARM)
         }
@@ -48,12 +52,7 @@ class AndroidRingtoneManager(
             ringtones.add(1, Pair("Default (${defaultRingtoneName})", defaultRingtoneUri.toString()))
         }
 
-        return ringtones.also {
-            println("($defaultRingtoneName, $defaultRingtoneUri)")
-            it.mapIndexed { index, pair ->
-                println("$index : $pair")
-            }
-        }
+        return@withContext ringtones
     }
 
     override fun play(uri: String, isLooping: Boolean, volume: Float) {
@@ -91,6 +90,7 @@ class AndroidRingtoneManager(
         return try {
              mediaPlayer?.isPlaying == true
         } catch (e: Exception) {
+            stop()
             false
         }
     }

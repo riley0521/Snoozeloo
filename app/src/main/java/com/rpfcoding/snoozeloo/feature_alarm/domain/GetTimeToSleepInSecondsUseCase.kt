@@ -6,33 +6,32 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
+import kotlin.time.Duration.Companion.minutes
 
 /**
  * If the alarm is tomorrow and is set between 4am to 10am.
  * Returns the hour that user should sleep.
  */
-class GetTimeToSleepInSecondsUseCase(
-    private val now: LocalDateTime? = null
-) {
+class GetTimeToSleepInSecondsUseCase {
 
-    operator fun invoke(hour: Int, futureDateTime: LocalDateTime): Flow<Long?> {
+    operator fun invoke(hour: Int, futureDateTime: LocalDateTime, curDateTime: LocalDateTime = LocalDateTime.now()): Flow<Long?> {
         return flow {
             while (true) {
-                delay(100L)
-                emit(getHourToSleep(hour, futureDateTime))
+                emit(getHourToSleep(hour, futureDateTime, curDateTime))
+                delay(1.minutes)
             }
         }.distinctUntilChanged()
     }
 
     private fun getHourToSleep(
         hour: Int,
-        futureDateTime: LocalDateTime
+        futureDateTime: LocalDateTime,
+        curDateTime: LocalDateTime
     ): Long? {
         if (hour !in 4..10) {
             return null
         }
 
-        val curDateTime = now ?: LocalDateTime.now()
         val tomorrow = curDateTime.plusDays(1)
 
         // If future dayOfYear is not equals to dayOfYear tomorrow, we don't have to tell user when to sleep.

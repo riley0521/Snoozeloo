@@ -1,42 +1,22 @@
 package com.rpfcoding.snoozeloo.feature_alarm.scheduler_receiver
 
-import android.media.RingtoneManager
-import android.net.Uri
 import android.os.Bundle
-import android.os.VibrationEffect
-import android.os.Vibrator
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import com.rpfcoding.snoozeloo.core.domain.ringtone.ALARM_MAX_REMINDER_MILLIS
 import com.rpfcoding.snoozeloo.core.presentation.designsystem.SnoozelooTheme
-import com.rpfcoding.snoozeloo.core.util.hideNotification
+import com.rpfcoding.snoozeloo.core.presentation.ui.ObserveAsEvents
 import com.rpfcoding.snoozeloo.core.util.isOreoMr1Plus
-import com.rpfcoding.snoozeloo.core.util.isOreoPlus
 import com.rpfcoding.snoozeloo.feature_alarm.domain.Alarm
 import com.rpfcoding.snoozeloo.feature_alarm.domain.AlarmConstants
-import com.rpfcoding.snoozeloo.feature_alarm.domain.AlarmScheduler
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import org.koin.android.ext.android.inject
-import org.koin.androidx.viewmodel.ext.android.viewModel
-import com.rpfcoding.snoozeloo.core.domain.ringtone.RingtoneManager as MyRingtoneManager
+import org.koin.androidx.compose.koinViewModel
+import org.koin.core.parameter.parametersOf
 
 class ReminderActivity : ComponentActivity() {
-
-    private val viewModel: ReminderViewModel by viewModel()
-    private val ringtoneManager: MyRingtoneManager by inject()
-    private val alarmScheduler: AlarmScheduler by inject()
-    private val scope: CoroutineScope by inject()
-    private val vibrator by lazy {
-        getSystemService(Vibrator::class.java)
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,82 +26,32 @@ class ReminderActivity : ComponentActivity() {
 
         setContent {
             SnoozelooTheme {
-                var effectsSet by remember { mutableStateOf(true) }
+                val viewModel: ReminderViewModel = koinViewModel { parametersOf(alarmId) }
+                var alarm by remember { mutableStateOf<Alarm?>(null) }
 
-                LaunchedEffect(Unit) {
-                    viewModel.getAlarmById(alarmId)
-                    delay(500L)
-                    effectsSet = false
-                }
-
-                LaunchedEffect(Unit) {
-                    delay(ALARM_MAX_REMINDER_MILLIS)
-                    viewModel.alarm?.let {
-                        disableAlarmAndFinish(it, it.isOneTime, shouldSnooze = true)
+                ObserveAsEvents(viewModel.events) { event ->
+                    when (event) {
+                        is ReminderEvent.OnAlarmFetched -> {
+                            alarm = event.alarm
+                        }
+                        else -> finish()
                     }
                 }
 
-                LaunchedEffect(viewModel.alarm, effectsSet) {
-                    if (!effectsSet && viewModel.alarm != null) {
-                        effectsSet = true
-                        setupEffects(viewModel.alarm!!)
-                    }
-                }
-
-                viewModel.alarm?.let { alarm ->
+                alarm?.let {
                     AlarmTriggerScreen(
-                        alarm = viewModel.alarm!!,
+                        alarm = it,
                         onTurnOffClick = {
-                            disableAlarmAndFinish(alarm, alarm.isOneTime)
+                            viewModel.disableOrRescheduleAlarm()
+                            finish()
                         },
                         onSnoozeClick = {
-                            disableAlarmAndFinish(alarm, alarm.isOneTime, shouldSnooze = true)
+                            viewModel.snoozeAlarm()
+                            finish()
                         }
                     )
                 }
             }
-        }
-    }
-
-    private fun disableAlarmAndFinish(alarm: Alarm, isOneTime: Boolean, shouldSnooze: Boolean = false) {
-        if (shouldSnooze) {
-            alarmScheduler.schedule(
-                alarm = alarm,
-                shouldSnooze = true
-            )
-        } else {
-            if (isOneTime) {
-                viewModel.disableAlarm(alarm.id)
-            } else {
-                viewModel.rescheduleAlarm()
-            }
-        }
-        hideNotification(alarm.id.hashCode())
-        ringtoneManager.stop()
-        vibrator.cancel()
-        finish()
-    }
-
-    private fun setupEffects(alarm: Alarm) {
-        val pattern = AlarmConstants.VIBRATE_PATTERN_LONG_ARR
-        if (isOreoPlus() && alarm.vibrate) {
-            scope.launch {
-                delay(500L)
-                vibrator.vibrate(VibrationEffect.createWaveform(pattern, 0))
-            }
-        }
-
-        val ringtoneUri = alarm.ringtoneUri.let {
-            if (it.isNotBlank()) {
-                return@let Uri.parse(it)
-            }
-
-            RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-        }
-
-        val volume = (alarm.volume / 100f)
-        if (ringtoneUri != null && !ringtoneManager.isPlaying()) {
-            ringtoneManager.play(uri = ringtoneUri.toString(), isLooping = true, volume = volume)
         }
     }
 

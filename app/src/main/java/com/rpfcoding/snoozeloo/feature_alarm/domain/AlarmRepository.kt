@@ -19,4 +19,16 @@ interface AlarmRepository {
     suspend fun disableAlarmById(id: String)
     suspend fun deleteById(id: String)
     suspend fun scheduleAllEnabledAlarms()
+
+    /**
+     * Play vibration and ringtone
+     */
+    fun setupEffects(alarm: Alarm)
+
+    /**
+     * Stop vibration and ringtone
+     */
+    fun stopEffectsAndHideNotification(alarm: Alarm)
+
+    fun snoozeAlarm(alarm: Alarm)
 }

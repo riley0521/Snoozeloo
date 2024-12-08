@@ -52,10 +52,10 @@ import androidx.compose.ui.window.Dialog
 import com.rpfcoding.snoozeloo.R
 import com.rpfcoding.snoozeloo.core.components.InputTimeTextField
 import com.rpfcoding.snoozeloo.core.presentation.designsystem.SnoozelooTheme
+import com.rpfcoding.snoozeloo.core.presentation.ui.ObserveAsEvents
 import com.rpfcoding.snoozeloo.core.util.showToast
 import com.rpfcoding.snoozeloo.feature_alarm.domain.DayValue
 import com.rpfcoding.snoozeloo.feature_alarm.presentation.components.DayChip
-import kotlinx.coroutines.flow.collectLatest
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
@@ -69,21 +69,21 @@ fun AddEditAlarmScreenRoot(
     val state = viewModel.state
     var isNavigatingBack by remember { mutableStateOf(false) }
 
-    BackHandler {}
+    BackHandler {
+        isNavigatingBack = true
+        navigateBack()
+    }
 
-    LaunchedEffect(Unit) {
-        viewModel.events.collectLatest { event ->
-            when (event) {
-                AddEditAlarmEvent.OnSuccess -> {
-                    isNavigatingBack = true
-                    navigateBack()
-                }
-                is AddEditAlarmEvent.OnFailure -> {
-                    context.showToast(event.uiText.asString(context))
-                }
+    ObserveAsEvents(viewModel.events) { event ->
+        when (event) {
+            AddEditAlarmEvent.OnSuccess -> {
+                isNavigatingBack = true
+                navigateBack()
+            }
+            is AddEditAlarmEvent.OnFailure -> {
+                context.showToast(event.uiText.asString(context))
             }
         }
-        isNavigatingBack = false
     }
 
     LaunchedEffect(state.existingAlarmFetched) {
@@ -116,23 +116,16 @@ private fun AddAlarmScreen(
     state: AddEditAlarmState,
     onAction: (AddEditAlarmAction) -> Unit
 ) {
-    var isDialogOpened by remember { mutableStateOf(false) }
 
     AddAlarmScreenMainContent(
         state = state,
-        onAction = { action ->
-            if (action is AddEditAlarmAction.OnAddEditAlarmNameClick) {
-                isDialogOpened = true
-            } else {
-                onAction(action)
-            }
-        }
+        onAction = onAction
     )
 
-    if (isDialogOpened) {
+    if (state.isDialogOpened) {
         Dialog(
             onDismissRequest = {
-                isDialogOpened = false
+                onAction(AddEditAlarmAction.OnCloseEditAlarmNameDialogClick)
             }
         ) {
             AddAlarmNameDialogContent(
@@ -141,7 +134,7 @@ private fun AddAlarmScreen(
                     onAction(AddEditAlarmAction.OnEditAlarmNameTextChange(it))
                 },
                 onSaveClick = {
-                    isDialogOpened = false
+                    onAction(AddEditAlarmAction.OnCloseEditAlarmNameDialogClick)
                 }
             )
         }

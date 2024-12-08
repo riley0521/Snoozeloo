@@ -45,10 +45,14 @@ class AddEditAlarmViewModel(
 
     fun getExistingAlarm(alarmId: String?) = viewModelScope.launch {
         val existingAlarm = alarmId?.let { alarmRepository.getById(it) } ?: run {
-            getDefaultRingtoneIfAlarmIsNull()
+            setDefaultRingtone()
             return@launch
         }
-        val ringtone = ringtoneManager.getAvailableRingtones().firstOrNull { it.second == existingAlarm.ringtoneUri }
+        val ringtone = ringtoneManager
+            .getAvailableRingtones().let { ringtones ->
+                ringtones.firstOrNull { (_, uri) -> uri == existingAlarm.ringtoneUri }
+                    ?: ringtones.getOrNull(1)
+            }
         this@AddEditAlarmViewModel.alarmId = alarmId
 
         state = state.copy(
@@ -56,14 +60,13 @@ class AddEditAlarmViewModel(
             hour = formatNumberWithLeadingZero(existingAlarm.hour),
             minute = formatNumberWithLeadingZero(existingAlarm.minute),
             repeatDays = existingAlarm.repeatDays,
-            ringtone = ringtone
-                ?: ringtoneManager.getAvailableRingtones().getOrNull(1), // The default ringtone
+            ringtone = ringtone,
             volume = (existingAlarm.volume / 100f),
             vibrate = existingAlarm.vibrate
         )
     }
 
-    private fun getDefaultRingtoneIfAlarmIsNull() {
+    private suspend fun setDefaultRingtone() {
         val ringtone = ringtoneManager.getAvailableRingtones().getOrNull(1)
 
         state = state.copy(
@@ -103,6 +106,12 @@ class AddEditAlarmViewModel(
             }
             AddEditAlarmAction.AcknowledgeExistingAlarm -> {
                 state = state.copy(existingAlarmFetched = true)
+            }
+            AddEditAlarmAction.OnAddEditAlarmNameClick -> {
+                state = state.copy(isDialogOpened = true)
+            }
+            AddEditAlarmAction.OnCloseEditAlarmNameDialogClick -> {
+                state = state.copy(isDialogOpened = false)
             }
             AddEditAlarmAction.OnSaveClick -> {
                 viewModelScope.launch {

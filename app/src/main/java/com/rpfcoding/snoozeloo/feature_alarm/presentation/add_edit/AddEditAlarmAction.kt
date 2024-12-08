@@ -10,6 +10,7 @@ sealed interface AddEditAlarmAction {
     data class OnMinuteTextChange(val value: String): AddEditAlarmAction
     data class OnEditAlarmNameTextChange(val value: String): AddEditAlarmAction
     data object OnAddEditAlarmNameClick: AddEditAlarmAction
+    data object OnCloseEditAlarmNameDialogClick: AddEditAlarmAction
     data class OnDayChipToggle(val value: DayValue): AddEditAlarmAction
     data object OnAlarmRingtoneClick: AddEditAlarmAction
     data class OnAlarmRingtoneChange(val value: NameAndUri): AddEditAlarmAction

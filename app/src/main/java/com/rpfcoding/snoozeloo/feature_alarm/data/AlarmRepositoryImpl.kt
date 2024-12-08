@@ -1,37 +1,50 @@
 package com.rpfcoding.snoozeloo.feature_alarm.data
 
+import android.content.Context
+import android.os.VibrationEffect
+import android.os.Vibrator
+import com.rpfcoding.snoozeloo.core.database.alarm.AlarmDao
+import com.rpfcoding.snoozeloo.core.domain.ringtone.RingtoneManager
+import com.rpfcoding.snoozeloo.core.util.hideNotification
+import com.rpfcoding.snoozeloo.core.util.isOreoPlus
+import com.rpfcoding.snoozeloo.feature_alarm.data.mapper.toAlarm
+import com.rpfcoding.snoozeloo.feature_alarm.data.mapper.toAlarmEntity
 import com.rpfcoding.snoozeloo.feature_alarm.domain.Alarm
+import com.rpfcoding.snoozeloo.feature_alarm.domain.AlarmConstants
 import com.rpfcoding.snoozeloo.feature_alarm.domain.AlarmRepository
 import com.rpfcoding.snoozeloo.feature_alarm.domain.AlarmScheduler
 import com.rpfcoding.snoozeloo.feature_alarm.domain.DayValue
-import com.rpfcoding.snoozeloo.feature_alarm.domain.LocalAlarmDataSource
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.map
 
 class AlarmRepositoryImpl(
-    private val localAlarmDataSource: LocalAlarmDataSource,
-    private val alarmScheduler: AlarmScheduler
+    private val alarmDao: AlarmDao,
+    private val alarmScheduler: AlarmScheduler,
+    private val ringtoneManager: RingtoneManager,
+    private val context: Context
 ): AlarmRepository {
+
+    private val vibrator = context.getSystemService(Vibrator::class.java)
+
     override fun getAll(): Flow<List<Alarm>> {
-        return localAlarmDataSource.getAll()
+        return alarmDao.getAll().map { alarms ->
+            alarms.map { it.toAlarm() }
+        }
     }
 
     override suspend fun getById(id: String): Alarm? {
-        return localAlarmDataSource.getById(id)
+        return alarmDao.getById(id)?.toAlarm()
     }
 
     override suspend fun upsert(alarm: Alarm) {
-        localAlarmDataSource.upsert(alarm)
+        alarmDao.upsert(alarm.toAlarmEntity())
         alarmScheduler.schedule(alarm)
     }
 
     override suspend fun toggle(alarm: Alarm) {
         val isEnabled = !alarm.enabled
-        localAlarmDataSource.upsert(alarm.copy(enabled = isEnabled))
+        alarmDao.upsert(alarm.copy(enabled = isEnabled).toAlarmEntity())
 
         if (isEnabled) {
             alarmScheduler.schedule(alarm)
@@ -55,14 +68,11 @@ class AlarmRepositoryImpl(
         }
 
         val updatedAlarm = alarm.copy(repeatDays = repeatDays)
-
-        // Finally, update the DB AND schedule updated alarm.
-        localAlarmDataSource.upsert(updatedAlarm)
-        alarmScheduler.schedule(updatedAlarm)
+        upsert(updatedAlarm)
     }
 
     override suspend fun disableAlarmById(id: String) {
-        localAlarmDataSource.disableAlarmById(id)
+        alarmDao.disableAlarmById(id)
     }
 
     override suspend fun deleteById(id: String) {
@@ -70,20 +80,39 @@ class AlarmRepositoryImpl(
             alarmScheduler.cancel(it)
         }
 
-        localAlarmDataSource.deleteById(id)
+        alarmDao.deleteById(id)
     }
 
     override suspend fun scheduleAllEnabledAlarms() {
-        withContext(Dispatchers.IO) {
-            val setAlarmsDeferred = getAll().first().map { alarm ->
-                async {
-                    if (alarm.enabled) {
-                        alarmScheduler.schedule(alarm)
-                    }
-                }
+        getAll().first().map { alarm ->
+            if (alarm.enabled) {
+                alarmScheduler.schedule(alarm)
             }
-
-            setAlarmsDeferred.awaitAll()
         }
+    }
+
+    override fun setupEffects(alarm: Alarm) {
+        val pattern = AlarmConstants.VIBRATE_PATTERN_LONG_ARR
+        if (isOreoPlus() && alarm.vibrate) {
+            vibrator.vibrate(VibrationEffect.createWaveform(pattern, 0))
+        }
+
+        val volume = (alarm.volume / 100f)
+        if (!ringtoneManager.isPlaying()) {
+            ringtoneManager.play(uri = alarm.ringtoneUri, isLooping = true, volume = volume)
+        }
+    }
+
+    override fun stopEffectsAndHideNotification(alarm: Alarm) {
+        context.hideNotification(alarm.id.hashCode())
+        ringtoneManager.stop()
+        vibrator.cancel()
+    }
+
+    override fun snoozeAlarm(alarm: Alarm) {
+        alarmScheduler.schedule(
+            alarm = alarm,
+            shouldSnooze = true
+        )
     }
 }

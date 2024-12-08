@@ -37,39 +37,16 @@ fun formatSeconds(value: Long): String {
     val totalTimeDuration = value.toDuration(DurationUnit.SECONDS)
     val days = totalTimeDuration.getRemainingDays().coerceAtLeast(0)
     val hours = totalTimeDuration.getRemainingHours().coerceAtLeast(0)
-    val minutes = totalTimeDuration.getRemainingMinutes()
+    val minutes = totalTimeDuration.getRemainingMinutes().coerceAtLeast(0)
 
-    val dayStr = "${days}d"
-    val hourStr = "${hours}h"
-    val minuteStr = "${minutes}min"
+    val parts = mutableListOf<String>()
+    if (days > 0) parts.add("${days}d")
+    if (hours > 0) parts.add("${hours}h")
+    if (minutes > 0) parts.add("${minutes}min")
 
     return when {
-        days > 0 -> {
-            if (hours > 0) {
-                if (minutes > 0) {
-                    "$dayStr $hourStr $minuteStr"
-                } else {
-                    "$dayStr $hourStr"
-                }
-            } else {
-                dayStr
-            }
-        }
-        hours > 0 -> {
-            if (minutes > 0) {
-                "$hourStr $minuteStr"
-            } else {
-                hourStr
-            }
-        }
-        else -> {
-            if (minutes > 0) {
-                minuteStr
-            } else if (minutes == 0) {
-                "less than a minute"
-            } else {
-                ""
-            }
-        }
+        parts.isNotEmpty() -> parts.joinToString(" ")
+        value < 60 -> "less than a minute"
+        else -> "0min"
     }
 }

@@ -14,7 +14,6 @@ sealed interface AddEditAlarmAction {
     data class OnDayChipToggle(val value: DayValue): AddEditAlarmAction
     data object OnAlarmRingtoneClick: AddEditAlarmAction
     data class OnAlarmRingtoneChange(val value: NameAndUri): AddEditAlarmAction
-    data object AcknowledgeExistingAlarm: AddEditAlarmAction
     data class OnVolumeChange(val value: Float): AddEditAlarmAction
     data object OnVibrateToggle: AddEditAlarmAction
 }

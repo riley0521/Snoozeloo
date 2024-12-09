@@ -21,11 +21,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,43 +31,32 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.rpfcoding.snoozeloo.R
 import com.rpfcoding.snoozeloo.core.domain.ringtone.NameAndUri
-import com.rpfcoding.snoozeloo.core.domain.ringtone.RingtoneManager
 import com.rpfcoding.snoozeloo.core.domain.ringtone.SILENT
 import com.rpfcoding.snoozeloo.core.presentation.designsystem.SnoozelooTheme
-import org.koin.compose.koinInject
+import org.koin.androidx.compose.koinViewModel
 
 @Composable
 fun RingtoneListScreenRoot(
-    selectedRingtone: NameAndUri?,
     onRingtoneSelected: (NameAndUri) -> Unit,
     navigateBack: () -> Unit,
-    ringtoneManager: RingtoneManager = koinInject()
+    viewModel: RingtoneListViewModel = koinViewModel()
 ) {
-    var state by remember { mutableStateOf(RingtoneListState()) }
-
-    LaunchedEffect(Unit) {
-        val availableRingtones = ringtoneManager.getAvailableRingtones()
-        state = state.copy(
-            ringtones = availableRingtones
-        )
-    }
+    val state = viewModel.state
 
     BackHandler {
-        ringtoneManager.stop()
+        viewModel.onAction(RingtoneListAction.OnBackClick)
         navigateBack()
     }
 
     RingtoneListScreen(
         ringtones = state.ringtones,
-        selectedRingtone = selectedRingtone,
+        selectedRingtone = state.selectedRingtone,
         onRingtoneSelected = {
+            viewModel.onAction(RingtoneListAction.OnRingtoneSelected(it))
             onRingtoneSelected(it)
-            if (it.second != SILENT) {
-                ringtoneManager.play(it.second)
-            }
         },
         onBackClick = {
-            ringtoneManager.stop()
+            viewModel.onAction(RingtoneListAction.OnBackClick)
             navigateBack()
         }
     )

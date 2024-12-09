@@ -20,6 +20,7 @@ import java.util.UUID
 import kotlin.math.roundToInt
 
 class AddEditAlarmViewModel(
+    private val alarmId: String?,
     private val alarmRepository: AlarmRepository,
     private val validateAlarmUseCase: ValidateAlarmUseCase,
     private val ringtoneManager: RingtoneManager
@@ -27,8 +28,6 @@ class AddEditAlarmViewModel(
 
     var state by mutableStateOf(AddEditAlarmState())
         private set
-
-    private var alarmId: String? = null
 
     private val hourFlow = snapshotFlow { state.hour }
     private val minuteFlow = snapshotFlow { state.minute }
@@ -41,9 +40,11 @@ class AddEditAlarmViewModel(
             val isValid = validateAlarmUseCase(hour, minute)
             state = state.copy(canSave = isValid)
         }.launchIn(viewModelScope)
+
+        getExistingAlarm()
     }
 
-    fun getExistingAlarm(alarmId: String?) = viewModelScope.launch {
+    private fun getExistingAlarm() = viewModelScope.launch {
         val existingAlarm = alarmId?.let { alarmRepository.getById(it) } ?: run {
             setDefaultRingtone()
             return@launch
@@ -53,7 +54,6 @@ class AddEditAlarmViewModel(
                 ringtones.firstOrNull { (_, uri) -> uri == existingAlarm.ringtoneUri }
                     ?: ringtones.getOrNull(1)
             }
-        this@AddEditAlarmViewModel.alarmId = alarmId
 
         state = state.copy(
             alarmName = existingAlarm.name,
@@ -104,9 +104,6 @@ class AddEditAlarmViewModel(
             is AddEditAlarmAction.OnAlarmRingtoneChange -> {
                 state = state.copy(ringtone = action.value)
             }
-            AddEditAlarmAction.AcknowledgeExistingAlarm -> {
-                state = state.copy(existingAlarmFetched = true)
-            }
             AddEditAlarmAction.OnAddEditAlarmNameClick -> {
                 state = state.copy(isDialogOpened = true)
             }
@@ -132,10 +129,5 @@ class AddEditAlarmViewModel(
             }
             else -> Unit
         }
-    }
-
-    fun resetState() {
-        alarmId = null
-        state = AddEditAlarmState()
     }
 }

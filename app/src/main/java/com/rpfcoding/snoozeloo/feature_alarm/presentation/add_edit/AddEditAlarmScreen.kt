@@ -33,7 +33,6 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,22 +61,17 @@ import org.koin.androidx.compose.koinViewModel
 fun AddEditAlarmScreenRoot(
     navigateBack: () -> Unit,
     navigateToRingtoneList: () -> Unit,
-    alarmId: String?,
     viewModel: AddEditAlarmViewModel = koinViewModel()
 ) {
     val context = LocalContext.current
-    val state = viewModel.state
-    var isNavigatingBack by remember { mutableStateOf(false) }
 
     BackHandler {
-        isNavigatingBack = true
         navigateBack()
     }
 
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
             AddEditAlarmEvent.OnSuccess -> {
-                isNavigatingBack = true
                 navigateBack()
             }
             is AddEditAlarmEvent.OnFailure -> {
@@ -86,22 +80,11 @@ fun AddEditAlarmScreenRoot(
         }
     }
 
-    LaunchedEffect(state.existingAlarmFetched) {
-        if (!state.existingAlarmFetched && !isNavigatingBack) {
-            // Set the state with existingAlarm data.
-            viewModel.getExistingAlarm(alarmId)
-
-            // Acknowledge, so this block won't re-trigger again if the user comes back from RingtoneListScreen.
-            viewModel.onAction(AddEditAlarmAction.AcknowledgeExistingAlarm)
-        }
-    }
-
     AddAlarmScreen(
         state = viewModel.state,
         onAction = { action ->
             when (action) {
                 AddEditAlarmAction.OnCloseClick -> {
-                    isNavigatingBack = true
                     navigateBack()
                 }
                 AddEditAlarmAction.OnAlarmRingtoneClick -> navigateToRingtoneList()

@@ -1,86 +1,82 @@
 package com.rpfcoding.snoozeloo
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.lifecycle.ViewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.navArgument
 import androidx.navigation.navigation
+import androidx.navigation.toRoute
+import com.rpfcoding.snoozeloo.core.domain.ringtone.NameAndUri
 import com.rpfcoding.snoozeloo.feature_alarm.presentation.add_edit.AddEditAlarmAction
 import com.rpfcoding.snoozeloo.feature_alarm.presentation.add_edit.AddEditAlarmScreenRoot
 import com.rpfcoding.snoozeloo.feature_alarm.presentation.add_edit.AddEditAlarmViewModel
 import com.rpfcoding.snoozeloo.feature_alarm.presentation.list.AlarmListScreenRoot
+import com.rpfcoding.snoozeloo.feature_alarm.presentation.nav.AlarmGraph
 import com.rpfcoding.snoozeloo.feature_alarm.presentation.ringtone_list.RingtoneListScreenRoot
+import com.rpfcoding.snoozeloo.feature_alarm.presentation.ringtone_list.RingtoneListViewModel
 import org.koin.androidx.compose.koinViewModel
+import org.koin.core.parameter.parametersOf
 
 @Composable
 fun NavigationRoot(
     navController: NavHostController
 ) {
 
-    NavHost(navController = navController, startDestination = "alarm") {
+    NavHost(navController = navController, startDestination = AlarmGraph.Root) {
         alarmGraph(navController)
     }
 }
 
 private fun NavGraphBuilder.alarmGraph(navController: NavHostController) {
-    navigation(
-        route = "alarm",
-        startDestination = "alarm_list"
+    navigation<AlarmGraph.Root>(
+        startDestination = AlarmGraph.AlarmList
     ) {
-        composable(route = "alarm_list") { entry ->
+        composable<AlarmGraph.AlarmList> {
             AlarmListScreenRoot(
                 navigateToAddEditScreen = {
-                    navController.navigate("alarm_detail/$it")
+                    navController.navigate(AlarmGraph.AlarmDetail(it))
                 }
             )
         }
 
-        composable(
-            route = "alarm_detail/{alarmId}",
-            arguments = listOf(
-                navArgument(
-                    name = "alarmId"
-                ) {
-                    this.type = NavType.StringType
-                    this.nullable = true
-                }
-            )
-        ) { entry ->
-            val alarmId = entry.arguments?.getString("alarmId")
-            val viewModel = entry.sharedKoinViewModel<AddEditAlarmViewModel>(navController)
+        composable<AlarmGraph.AlarmDetail> { entry ->
+            val alarmDetailRoute: AlarmGraph.AlarmDetail = entry.toRoute()
+            val viewModel: AddEditAlarmViewModel = koinViewModel { parametersOf(alarmDetailRoute.alarmId) }
+
+            LaunchedEffect(Unit) {
+                val nameAndUri = entry.savedStateHandle.get<NameAndUri>("selectedRingtone") ?: return@LaunchedEffect
+                viewModel.onAction(AddEditAlarmAction.OnAlarmRingtoneChange(nameAndUri))
+            }
 
             AddEditAlarmScreenRoot(
                 navigateBack = {
                     navController.navigateUp()
-                    // We need to reset state because alarm_list is in the same navGraph.
-                    // So, this viewModel will not be cleared.
-                    viewModel.resetState()
                 },
                 navigateToRingtoneList = {
-                    navController.navigate("alarm_ringtones")
+                    val (name, uri) = viewModel.state.ringtone ?: Pair(null, null)
+                    navController.navigate(AlarmGraph.RingtoneList(name, uri))
                 },
-                alarmId = alarmId,
                 viewModel = viewModel
             )
         }
 
-        composable(route = "alarm_ringtones") { entry ->
-            val viewModel = entry.sharedKoinViewModel<AddEditAlarmViewModel>(navController)
+        composable<AlarmGraph.RingtoneList> { entry ->
+            val ringtoneListRoute: AlarmGraph.RingtoneList = entry.toRoute()
+            val viewModel: RingtoneListViewModel = koinViewModel { parametersOf(ringtoneListRoute.getNameAndUri()) }
 
             RingtoneListScreenRoot(
-                selectedRingtone = viewModel.state.ringtone,
                 onRingtoneSelected = {
-                    viewModel.onAction(AddEditAlarmAction.OnAlarmRingtoneChange(it))
+                    navController.previousBackStackEntry?.savedStateHandle?.set("selectedRingtone", it)
                 },
                 navigateBack = {
                     navController.navigateUp()
-                }
+                },
+                viewModel = viewModel
             )
         }
     }
